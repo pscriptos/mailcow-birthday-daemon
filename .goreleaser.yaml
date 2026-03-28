@@ -39,7 +39,7 @@ upx:
     compress: best
     lzma: true
 dockers:
-  - dockerfile: Containerfile
+  - dockerfile: Dockerfile
     image_templates:
       - "git.techniverse.net/scriptos/mailcow-birthday-daemon:{{ .Major }}"
       - "git.techniverse.net/scriptos/mailcow-birthday-daemon:{{ .Major }}.{{ .Minor }}"
