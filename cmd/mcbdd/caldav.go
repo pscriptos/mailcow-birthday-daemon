@@ -133,7 +133,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 		matchedBev := false
 		for _, v := range ev.Data.Children {
 			for i, bev := range bevs {
-				if icalMatchesBev(v, bev) {
+				if icalMatchesBev(v, bev, d.notificationEnabled) {
 					bevsInSync = append(bevsInSync, i)
 					matchedBev = true
 				}
@@ -154,7 +154,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 		if slices.Contains(bevsInSync, i) {
 			continue
 		}
-		p, ic := v.generateICAL(calendarPath)
+		p, ic := v.generateICAL(calendarPath, d.notificationEnabled, d.notificationTrigger)
 		_, err := cl.PutCalendarObject(ctx, p, ic)
 		if err != nil {
 			return err
@@ -193,7 +193,7 @@ func generateBirthdayEvents(birthdays []BirthdayContact) []birthdayEvent {
 	return bb
 }
 
-func icalMatchesBev(ic *ical.Component, bev birthdayEvent) bool {
+func icalMatchesBev(ic *ical.Component, bev birthdayEvent, notificationEnabled bool) bool {
 	if ic.Props.Get(ical.PropSummary) == nil || ic.Props.Get(ical.PropSummary).Value != bev.Summary {
 		return false
 	}
@@ -211,10 +211,20 @@ func icalMatchesBev(ic *ical.Component, bev birthdayEvent) bool {
 	if dtEnd.Params.Get(ical.ParamValue) != string(ical.ValueDate) {
 		return false
 	}
+	hasAlarm := false
+	for _, child := range ic.Children {
+		if child.Name == ical.CompAlarm {
+			hasAlarm = true
+			break
+		}
+	}
+	if notificationEnabled != hasAlarm {
+		return false
+	}
 	return true
 }
 
-func (bev birthdayEvent) generateICAL(calendar string) (string, *ical.Calendar) {
+func (bev birthdayEvent) generateICAL(calendar string, notificationEnabled bool, notificationTrigger string) (string, *ical.Calendar) {
 	id := uuid.New().String()
 	cal := ical.NewCalendar()
 	cal.Props.SetText(ical.PropProductID, ConstProductID)
@@ -231,6 +241,16 @@ func (bev birthdayEvent) generateICAL(calendar string) (string, *ical.Calendar) 
 	end.Value = bev.DateTimeEnd
 	event.Props.Set(start)
 	event.Props.Set(end)
+	if notificationEnabled {
+		alarm := ical.NewComponent(ical.CompAlarm)
+		alarm.Props.SetText(ical.PropAction, "DISPLAY")
+		alarm.Props.SetText(ical.PropDescription, bev.Summary)
+		trigger := ical.NewProp(ical.PropTrigger)
+		trigger.Params.Set(ical.ParamValue, string(ical.ValueDuration))
+		trigger.Value = notificationTrigger
+		alarm.Props.Set(trigger)
+		event.Children = append(event.Children, alarm)
+	}
 	cal.Children = append(cal.Children, event)
 	return fmt.Sprintf("%s/%s.ics", calendar, id), cal
 }

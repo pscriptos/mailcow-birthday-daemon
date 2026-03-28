@@ -22,6 +22,8 @@ services:
             - MAILCOW_BASE=https://mail.example.com
             - MAILCOW_APIKEY=DEIN-APIKEY-HIER
             - MAILCOW_RESOLVE_HOST=nginx-mailcow
+            # - NOTIFICATION_ENABLED=true
+            # - NOTIFICATION_TIME=08:00
         volumes:
             - birthdaydaemon:/data
 
@@ -50,6 +52,8 @@ docker compose up -d
 | `MAILCOW_APIKEY` | **Ja** | – | API-Key mit Lese-/Schreibzugriff aus dem Mailcow-Admin-Panel |
 | `MAILCOW_RESOLVE_HOST` | Nein | – | Interner Hostname für TCP-Verbindungen (z. B. `nginx-mailcow`). Löst Hairpin-NAT-Probleme in Docker-Netzen. TLS nutzt weiterhin den Hostnamen aus `MAILCOW_BASE`. |
 | `CALENDAR_NAME` | Nein | `Birthdays` | Name des Geburtstagskalenders, der in jeder Mailbox erstellt wird |
+| `NOTIFICATION_ENABLED` | Nein | `false` | Aktiviert Kalender-Benachrichtigungen (VALARM) für Geburtstags-Events (`true`/`false`) |
+| `NOTIFICATION_TIME` | Nein | `08:00` | Uhrzeit der Benachrichtigung im Format `HH:MM` (nur wirksam wenn `NOTIFICATION_ENABLED=true`) |
 | `STATEFILE` | Nein | `state.json` (im Container: `/data/state.json`) | Pfad zur Zustandsdatei, in der App-Passwörter und der aktuelle Kalendername gespeichert werden |
 
 ## API-Key erstellen
@@ -79,4 +83,7 @@ Nach dem Start synchronisiert der Daemon automatisch alle 15 Minuten die Geburts
 - Die berechneten Ereignisse werden in einen Kalender synchronisiert, dessen Name über `CALENDAR_NAME` konfigurierbar ist (Standard: „Birthdays"). Der Anzeigename kann vom Benutzer in SOGo zusätzlich umbenannt werden.
     - Bei Änderung von `CALENDAR_NAME` wird der alte Kalender beim nächsten Start automatisch entfernt und ein neuer mit dem neuen Namen erstellt. Der alte Kalender wird dabei nur gelöscht, wenn er ausschließlich vom Daemon erstellte Einträge enthält – manuell angelegte Kalender mit gleichem Namen bleiben unangetastet.
     - **Wichtig:** Damit die Umbenennung korrekt erkannt wird, muss der Daemon **mindestens einmal** mit dem neuen Code und dem **alten** Kalendernamen gelaufen sein, damit der Name im State-File gespeichert wird. Erst danach `CALENDAR_NAME` ändern und erneut starten. Wird der Name geändert, bevor der State aktualisiert wurde, kann der alte Kalender nicht automatisch entfernt werden und muss manuell gelöscht werden.
+- Wenn `NOTIFICATION_ENABLED=true` gesetzt ist, erhält jedes Geburtstags-Event einen **VALARM** (iCal-Alarm). Kalender-Clients (SOGo, iOS, Android, Thunderbird) zeigen dann zur konfigurierten Uhrzeit eine Benachrichtigung an. Das Event bleibt weiterhin ein Ganztags-Event.
+    - Bestehende Events ohne VALARM werden beim nächsten Synchronisationszyklus automatisch neu erstellt – keine manuelle Migration nötig.
+    - Falls die Benachrichtigungen wieder deaktiviert werden (`NOTIFICATION_ENABLED=false`), werden Events mit VALARM ebenfalls automatisch durch Events ohne VALARM ersetzt.
 - Der Synchronisationszyklus läuft alle **15 Minuten** automatisch.
