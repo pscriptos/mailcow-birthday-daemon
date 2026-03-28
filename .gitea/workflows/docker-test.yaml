@@ -27,23 +27,21 @@ jobs:
         run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o mailcow-birthday-daemon ./cmd/mcbdd
 
       - name: Login to Gitea Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: git.techniverse.net
-          username: ${{ gitea.actor }}
-          password: ${{ secrets.REGISTRY_TOKEN }}
+        run: echo "${REGISTRY_TOKEN}" | docker login git.techniverse.net -u "${GITHUB_ACTOR}" --password-stdin
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            git.techniverse.net/scriptos/mailcow-birthday-daemon:dev
-            git.techniverse.net/scriptos/mailcow-birthday-daemon:${{ gitea.sha }}
+        run: |
+          IMAGE="git.techniverse.net/scriptos/mailcow-birthday-daemon"
+          docker build -t "${IMAGE}:dev" -t "${IMAGE}:${GITHUB_SHA}" .
+          docker push "${IMAGE}:dev"
+          docker push "${IMAGE}:${GITHUB_SHA}"
 
       - name: Cleanup old SHA-tagged images
         if: success()
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         run: |
           API="https://git.techniverse.net/api/v1"
           OWNER="scriptos"
@@ -51,7 +49,7 @@ jobs:
           KEEP=5
 
           # Fetch all container package versions
-          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.REGISTRY_TOKEN }}" \
+          RESPONSE=$(curl -s -H "Authorization: token ${REGISTRY_TOKEN}" \
             "${API}/packages/${OWNER}?type=container&q=${PACKAGE}&limit=50")
 
           # Extract only SHA-tagged versions (40-char hex), sorted newest first
@@ -68,7 +66,7 @@ jobs:
             fi
             echo "Deleting: ${VERSION:0:12}..."
             curl -s -X DELETE \
-              -H "Authorization: token ${{ secrets.REGISTRY_TOKEN }}" \
+              -H "Authorization: token ${REGISTRY_TOKEN}" \
               "${API}/packages/${OWNER}/container/${PACKAGE}/${VERSION}"
           done
           echo "Cleanup done. Kept $((COUNT < KEEP ? COUNT : KEEP)) of $COUNT SHA-tagged images."
