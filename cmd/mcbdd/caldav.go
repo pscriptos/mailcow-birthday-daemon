@@ -197,10 +197,18 @@ func icalMatchesBev(ic *ical.Component, bev birthdayEvent) bool {
 	if ic.Props.Get(ical.PropSummary) == nil || ic.Props.Get(ical.PropSummary).Value != bev.Summary {
 		return false
 	}
-	if ic.Props.Get(ical.PropDateTimeStart) == nil || ic.Props.Get(ical.PropDateTimeStart).Value != bev.DateTimeStart {
+	dtStart := ic.Props.Get(ical.PropDateTimeStart)
+	if dtStart == nil || dtStart.Value != bev.DateTimeStart {
 		return false
 	}
-	if ic.Props.Get(ical.PropDateTimeEnd) == nil || ic.Props.Get(ical.PropDateTimeEnd).Value != bev.DateTimeEnd {
+	if dtStart.Params.Get(ical.ParamValue) != string(ical.ValueDate) {
+		return false
+	}
+	dtEnd := ic.Props.Get(ical.PropDateTimeEnd)
+	if dtEnd == nil || dtEnd.Value != bev.DateTimeEnd {
+		return false
+	}
+	if dtEnd.Params.Get(ical.ParamValue) != string(ical.ValueDate) {
 		return false
 	}
 	return true
@@ -216,8 +224,10 @@ func (bev birthdayEvent) generateICAL(calendar string) (string, *ical.Calendar) 
 	event.Props.SetText(ical.PropSummary, bev.Summary)
 	event.Props.SetDateTime(ical.PropDateTimeStamp, time.Now())
 	start := ical.NewProp(ical.PropDateTimeStart)
+	start.SetValueType(ical.ValueDate)
 	start.Value = bev.DateTimeStart
 	end := ical.NewProp(ical.PropDateTimeEnd)
+	end.SetValueType(ical.ValueDate)
 	end.Value = bev.DateTimeEnd
 	event.Props.Set(start)
 	event.Props.Set(end)
