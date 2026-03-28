@@ -2,6 +2,8 @@
 
 > **Fork-Hinweis:** Dieses Projekt ist ein Fork von [Marco98/mailcow-birthday-daemon](https://github.com/Marco98/mailcow-birthday-daemon) und wird hier eigenständig weiterentwickelt.
 
+> **Hinweis zur Entwicklung:** Dieses Projekt wird mit Unterstützung von KI-gestützten Entwicklungswerkzeugen gepflegt. Go ist nicht meine primäre Sprache – umso wichtiger sind sauberer Code, Tests und transparente Entwicklung.
+
 Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailcow-Mailbox erzeugt und synchronisiert. Es ist kein Benutzereingriff erforderlich – alles läuft vollautomatisch.
 
 ![Kalenderansicht](assets/img/kalenderansicht.png)
