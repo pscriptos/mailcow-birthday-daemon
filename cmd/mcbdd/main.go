@@ -40,6 +40,13 @@ type Daemon struct {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "cleanup" {
+		if err := runCleanup(); err != nil {
+			slog.Error("cleanup failed", "err", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(); err != nil {
 		slog.Error("fatal error", "err", err)
 		os.Exit(1)
@@ -172,6 +179,77 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 	if err := d.syncBirthdaysToCal(ctx, davclient, m.Username, bb); err != nil {
 		return fmt.Errorf("error syncing birthday events to caldav: %w", err)
 	}
+	return nil
+}
+
+func runCleanup() error {
+	if len(os.Args) < 3 {
+		fmt.Fprintf(os.Stderr, "Verwendung: %s cleanup <alter-kalendername>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\nEntfernt einen automatisch erstellten Geburtstagskalender aus allen Mailboxen.\n")
+		fmt.Fprintf(os.Stderr, "Nur Kalender, deren Einträge ausschließlich vom Daemon erstellt wurden, werden gelöscht.\n")
+		os.Exit(1)
+	}
+	oldCalendarName := os.Args[2]
+
+	slog.Info("starting calendar cleanup", "calendarName", oldCalendarName)
+
+	mailcowBase := os.Getenv("MAILCOW_BASE")
+	if mailcowBase == "" {
+		return fmt.Errorf("MAILCOW_BASE environment variable is not set")
+	}
+	mailcowAPIKey := os.Getenv("MAILCOW_APIKEY")
+	if mailcowAPIKey == "" {
+		return fmt.Errorf("MAILCOW_APIKEY environment variable is not set")
+	}
+	calendarName := os.Getenv("CALENDAR_NAME")
+	if calendarName == "" {
+		calendarName = "Birthdays"
+	}
+
+	d := &Daemon{
+		userTokens:     make(map[string]string),
+		userTokensLock: &sync.RWMutex{},
+		baseURL:        mailcowBase,
+		stateFilepath:   os.Getenv("STATEFILE"),
+		httpClient:     &http.Client{Transport: buildTransport()},
+		calendarName:   calendarName,
+	}
+	if len(d.stateFilepath) == 0 {
+		d.stateFilepath = "state.json"
+	}
+	d.mailcowClient = mailcow.New(d.httpClient, mailcowBase, mailcowAPIKey)
+
+	if err := d.loadState(); err != nil {
+		return fmt.Errorf("error loading state: %w", err)
+	}
+
+	mb, err := d.mailcowClient.GetMailboxes(context.Background())
+	if err != nil {
+		return fmt.Errorf("error fetching mailboxes: %w", err)
+	}
+
+	processed, skipped := 0, 0
+	for _, m := range mb {
+		if !m.IsActive() {
+			continue
+		}
+		d.userTokensLock.RLock()
+		pass, ok := d.userTokens[m.Username]
+		d.userTokensLock.RUnlock()
+		if !ok {
+			slog.Warn("no stored password for user, skipping", "user", m.Username)
+			skipped++
+			continue
+		}
+		ctx := context.Background()
+		davclient := webdav.HTTPClientWithBasicAuth(d.httpClient, m.Username, pass)
+		if err := d.cleanupOldCalendar(ctx, davclient, m.Username, oldCalendarName); err != nil {
+			slog.Error("error cleaning up calendar", "user", m.Username, "err", err)
+		}
+		processed++
+	}
+
+	slog.Info("cleanup finished", "processed", processed, "skipped", skipped)
 	return nil
 }
 
