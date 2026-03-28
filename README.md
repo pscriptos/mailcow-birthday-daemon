@@ -49,6 +49,15 @@ docker compose up -d
 
 > Alle verfügbaren Image-Tags sind in der [Container Registry](https://git.techniverse.net/scriptos/-/packages/container/mailcow-birthday-daemon) einsehbar.
 
+## Repository-Spiegel
+
+| Rolle | URL |
+|-------|-----|
+| **Master** | https://git.techniverse.net/scriptos/mailcow-birthday-daemon.git |
+| **Spiegel** | https://github.com/pscriptos/mailcow-birthday-daemon.git |
+
+> **Hinweis:** Die Entwicklung findet im Master-Repository statt. Der GitHub-Spiegel wird automatisch synchronisiert. Issues und Feature-Requests können sowohl auf [Gitea](https://git.techniverse.net/scriptos/mailcow-birthday-daemon/issues) als auch auf [GitHub](https://github.com/pscriptos/mailcow-birthday-daemon/issues) eingereicht werden.
+
 ## Dokumentation
 
 Die vollständige Dokumentation befindet sich im Ordner [`docs/`](docs/README.md).
