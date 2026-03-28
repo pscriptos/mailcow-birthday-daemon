@@ -26,6 +26,9 @@ checksum:
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 release:
+  gitea:
+    owner: "{{ .Env.REGISTRY_USER }}"
+    name: mailcow-birthday-daemon
   prerelease: auto
 changelog:
   sort: asc

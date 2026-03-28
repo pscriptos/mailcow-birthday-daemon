@@ -32,3 +32,5 @@ jobs:
           args: release --clean
         env:
           GITEA_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+          GORELEASER_FORCE_TOKEN: gitea
