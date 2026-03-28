@@ -29,6 +29,10 @@ release:
   gitea:
     owner: "{{ .Env.REGISTRY_USER }}"
     name: mailcow-birthday-daemon
+  gitea_urls:
+    api: "{{ .Env.REGISTRY_URL }}/api/v1/"
+    download: "{{ .Env.REGISTRY_URL }}"
+    skip_tls_verify: false
   prerelease: auto
 changelog:
   sort: asc
