@@ -13,7 +13,7 @@ Den folgenden Abschnitt in die `docker-compose.override.yml` einfügen:
 ```yaml
 services:
     birthdaydaemon:
-        image: git.techniverse.net/scriptos/mailcow-birthday-daemon:0.1.1
+        image: git.techniverse.net/scriptos/mailcow-birthday-daemon:latest
         restart: always
         environment:
         - MAILCOW_BASE=https://mailcow.host
@@ -23,6 +23,8 @@ services:
 volumes:
     birthdaydaemon:
 ```
+
+> **Tipp:** Statt `:latest` kann auch eine feste Version wie `:1.0.0` verwendet werden.
 
 Den API-Key findet man im Admin-Panel unter Konfiguration > Zugang > Administratordetails bearbeiten > API > Lese-/Schreibzugriff.
 
