@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -56,11 +57,7 @@ func run() error {
 		userTokensLock: &sync.RWMutex{},
 		baseURL:        mailcowBase,
 		stateFilepath:  os.Getenv("STATEFILE"),
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-			},
-		},
+		httpClient:     &http.Client{Transport: buildTransport()},
 	}
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
@@ -138,4 +135,32 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 		return fmt.Errorf("error syncing birthday events to caldav: %w", err)
 	}
 	return nil
+}
+
+// buildTransport erstellt einen http.Transport.
+// Wenn MAILCOW_RESOLVE_HOST gesetzt ist (z. B. "nginx-mailcow"), wird der
+// tatsächliche TCP-Connect auf diesen Host umgeleitet, während TLS-SNI und
+// Zertifikatsprüfung den Original-Hostnamen aus der URL verwenden.
+// Damit wird das Hairpin-NAT-Problem in Docker-Netzen umgangen.
+func buildTransport() *http.Transport {
+	resolveHost := os.Getenv("MAILCOW_RESOLVE_HOST")
+	t := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
+	if resolveHost != "" {
+		slog.Info("using internal resolve host for connections", "resolveHost", resolveHost)
+		dialer := &net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}
+		t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			_, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			addr = net.JoinHostPort(resolveHost, port)
+			return dialer.DialContext(ctx, network, addr)
+		}
+	}
+	return t
 }

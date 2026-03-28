@@ -15,14 +15,22 @@ services:
     birthdaydaemon:
         image: git.techniverse.net/scriptos/mailcow-birthday-daemon:latest
         restart: always
+        depends_on:
+            - nginx-mailcow
+        networks:
+            - mailcow-network
         environment:
-        - MAILCOW_BASE=https://mailcow.host
-        - MAILCOW_APIKEY=DEIN-APIKEY-HIER
+            - MAILCOW_BASE=https://mail.example.com
+            - MAILCOW_APIKEY=DEIN-APIKEY-HIER
+            - MAILCOW_RESOLVE_HOST=nginx-mailcow
         volumes:
-        - birthdaydaemon:/data
+            - birthdaydaemon:/data
+
 volumes:
     birthdaydaemon:
 ```
+
+> **Wichtig:** `mail.example.com` muss durch den tatsächlichen FQDN der eigenen Mailcow-Instanz ersetzt werden. `MAILCOW_RESOLVE_HOST=nginx-mailcow` sorgt dafür, dass der Daemon den Mailcow-Nginx innerhalb des Docker-Netzes direkt erreicht, anstatt über die öffentliche IP zu gehen (Hairpin-NAT-Problem). TLS-SNI und Zertifikatsprüfung verwenden weiterhin den Hostnamen aus `MAILCOW_BASE`.
 
 > **Tipp:** Statt `:latest` kann auch eine feste Version wie `:1.0.0` verwendet werden.
 
@@ -36,9 +44,10 @@ Da die Mailcow-API derzeit nicht vollständig ist und sich eher im Early-Access-
 |---|---|---|---|
 | `MAILCOW_BASE` | **Ja** | – | Basis-URL der Mailcow-Instanz (z. B. `https://mailcow.example.com`) |
 | `MAILCOW_APIKEY` | **Ja** | – | API-Key mit Lese-/Schreibzugriff aus dem Mailcow-Admin-Panel |
+| `MAILCOW_RESOLVE_HOST` | Nein | – | Interner Hostname für TCP-Verbindungen (z. B. `nginx-mailcow`). Löst Hairpin-NAT-Probleme in Docker-Netzen. TLS nutzt weiterhin den Hostnamen aus `MAILCOW_BASE`. |
 | `STATEFILE` | Nein | `state.json` (im Container: `/data/state.json`) | Pfad zur Zustandsdatei, in der App-Passwörter gespeichert werden |
 
-> **Hinweis für bestehende Installationen:** Es wurden keine Variablennamen oder Funktionalitäten geändert. Ein Update ist ohne Anpassungen möglich.
+> **Hinweis für bestehende Installationen:** Falls der Daemon die Mailcow-API wegen Hairpin-NAT nicht erreichen kann, muss lediglich `MAILCOW_RESOLVE_HOST=nginx-mailcow` als Umgebungsvariable ergänzt werden. Details siehe Installationsabschnitt.
 
 ## Funktionsweise
 
