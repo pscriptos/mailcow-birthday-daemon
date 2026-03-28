@@ -66,7 +66,9 @@ docker compose pull birthdaydaemon && docker compose up -d --no-deps birthdaydae
 
 Den API-Key findet man im Admin-Panel unter Konfiguration → Zugang → Administratordetails bearbeiten → API → Lese-/Schreibzugriff.
 
-> **Warnung:** Da die Mailcow-API derzeit nicht vollständig ist und sich eher im Early-Access-Stadium befindet, wird dringend davon abgeraten, die Option „IP-Prüfung für API überspringen" zu aktivieren.
+![API-Key erstellen](../assets/img/apikey-erstellen.png)
+
+> **Warnung:** Da die Mailcow-API derzeit nicht vollständig ist und sich eher im Early-Access-Stadium befindet, wird dringend davon abgeraten, die Option „IP-Prüfung für API überspringen" zu aktivieren. (siehe Bild)
 
 ## Prüfen, ob alles läuft
 
