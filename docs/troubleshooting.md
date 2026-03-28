@@ -15,6 +15,23 @@
 
 Das gespeicherte App-Passwort für den betroffenen Benutzer ist ungültig (z. B. manuell in Mailcow gelöscht). Der Daemon verwirft das alte Passwort automatisch und erstellt beim nächsten Zyklus ein neues.
 
+## Doppelte Kalender nach Umbenennung von `CALENDAR_NAME`
+
+Wurde `CALENDAR_NAME` geändert, bevor der alte Name im State-File gespeichert war (z. B. bei einem Update von vor v0.2.0), existieren pro Mailbox zwei Geburtstagskalender. Der integrierte Cleanup-Befehl entfernt den alten Kalender aus allen Mailboxen – aber nur, wenn alle enthaltenen Einträge vom Daemon erstellt wurden. Manuell angelegte Kalender mit gleichem Namen bleiben unangetastet.
+
+```bash
+cd /opt/mailcow-dockerized
+docker compose exec birthdaydaemon /mailcow-birthday-daemon cleanup <alter-kalendername>
+```
+
+**Beispiel:** Der alte Kalender hieß `Birthdays` und wurde auf `Geburtstage` umgestellt:
+
+```bash
+docker compose exec birthdaydaemon /mailcow-birthday-daemon cleanup Birthdays
+```
+
+> **Hinweis:** Der Daemon muss vorher mindestens einmal gelaufen sein, damit App-Passwörter im State-File vorhanden sind. Benutzer ohne gespeichertes Passwort werden übersprungen.
+
 ## Kalender erscheint nicht in SOGo
 
 SOGo zeigt neue Kalender manchmal erst nach einem Neuladen der Seite (Strg+Shift+R) oder nach dem nächsten Login an. Der Kalender wird unter dem Namen erstellt, der in `CALENDAR_NAME` konfiguriert ist (Standard: `Birthdays`).
