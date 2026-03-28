@@ -1,12 +1,12 @@
 # Mailcow Birthday Daemon 🎂
 
-Very simple daemon that generates and synchronizes a Birthday Calendar for every Mailcow mailbox.
+Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailcow-Mailbox erzeugt und synchronisiert.
 
-No user action is required. Everything is handled automatically.
+Es ist kein Benutzereingriff erforderlich. Alles wird vollautomatisch erledigt.
 
 ## Installation
 
-Just add it to the `docker-compose.override.yml`:
+Den folgenden Abschnitt in die `docker-compose.override.yml` einfügen:
 
 ```yaml
 services:
@@ -15,23 +15,34 @@ services:
         restart: always
         environment:
         - MAILCOW_BASE=https://mailcow.host
-        - MAILCOW_APIKEY=YOUR-APIKEY-HERE
+        - MAILCOW_APIKEY=DEIN-APIKEY-HIER
         volumes:
         - birthdaydaemon:/data
 volumes:
     birthdaydaemon:
 ```
 
-The API-Key can be obtained in the admin panel at Configuration > Access > Edit administrator details > API > Read-Write Access
+Den API-Key findet man im Admin-Panel unter Konfiguration > Zugang > Administratordetails bearbeiten > API > Lese-/Schreibzugriff.
 
-As the Mailcow API does not seem to be complete and looks more like a early access, i would strongly advice against enabling "Skip IP check for API".
+Da die Mailcow-API derzeit nicht vollständig ist und sich eher im Early-Access-Stadium befindet, wird dringend davon abgeraten, die Option „IP-Prüfung für API überspringen" zu aktivieren.
 
-## How it works
+## Konfiguration (Umgebungsvariablen)
 
-- Via the mailcow API a app password with access to carddav and caldav in generated for every user
-    - As every app password in mailcow gets a global autoincrementing number, the app passwords are kept and saved to disk to avoid massively increasing this number
-- All contacts of all address books are fetched and the birthday information is extracted per user
-- The resulting events in the calendar are calculated in advance.
-    - currently hardcoded to: 1 year in past; 10 years in future
-    - Isolated per mailbox of course. A user will only see birthdays of his own contacts.
-- The calculated events will get synchronized to a calendar in every mailbox called "Birthdays" (display name can be renamed by user in SOGo)
+| Variable | Pflicht | Standardwert | Beschreibung |
+|---|---|---|---|
+| `MAILCOW_BASE` | **Ja** | – | Basis-URL der Mailcow-Instanz (z. B. `https://mailcow.example.com`) |
+| `MAILCOW_APIKEY` | **Ja** | – | API-Key mit Lese-/Schreibzugriff aus dem Mailcow-Admin-Panel |
+| `STATEFILE` | Nein | `state.json` (im Container: `/data/state.json`) | Pfad zur Zustandsdatei, in der App-Passwörter gespeichert werden |
+
+> **Hinweis für bestehende Installationen:** Es wurden keine Variablennamen oder Funktionalitäten geändert. Ein Update ist ohne Anpassungen möglich.
+
+## Funktionsweise
+
+- Über die Mailcow-API wird für jeden aktiven Benutzer ein App-Passwort mit Zugriff auf CardDAV und CalDAV erzeugt.
+    - Da jedes App-Passwort in Mailcow eine global hochzählende Nummer erhält, werden die Passwörter auf der Festplatte gespeichert, um das unnötige Ansteigen dieser Nummer zu vermeiden.
+- Alle Kontakte aus sämtlichen Adressbüchern werden abgerufen und die Geburtstagsinformationen je Benutzer extrahiert.
+- Die daraus resultierenden Kalendereinträge werden im Voraus berechnet.
+    - Aktuell fest eingestellt: 1 Jahr in der Vergangenheit, 10 Jahre in der Zukunft.
+    - Selbstverständlich pro Mailbox isoliert – ein Benutzer sieht nur die Geburtstage seiner eigenen Kontakte.
+- Die berechneten Ereignisse werden in einen Kalender namens „Birthdays" in jeder Mailbox synchronisiert (der Anzeigename kann vom Benutzer in SOGo umbenannt werden).
+- Der Synchronisationszyklus läuft alle **15 Minuten** automatisch.
