@@ -4,6 +4,8 @@
 
 Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailcow-Mailbox erzeugt und synchronisiert. Es ist kein Benutzereingriff erforderlich – alles läuft vollautomatisch.
 
+![Kalenderansicht](assets/img/kalenderansicht.png)
+
 ## Kurzübersicht
 
 - Liest Geburtstage aus allen CardDAV-Adressbüchern jeder Mailbox
