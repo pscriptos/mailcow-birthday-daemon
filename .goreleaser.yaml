@@ -41,7 +41,7 @@ upx:
 dockers:
   - dockerfile: Containerfile
     image_templates:
-      - "ghcr.io/marco98/mailcow-birthday-daemon:{{ .Major }}"
-      - "ghcr.io/marco98/mailcow-birthday-daemon:{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/marco98/mailcow-birthday-daemon:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
-      - "ghcr.io/marco98/mailcow-birthday-daemon:latest"
+      - "git.techniverse.net/scriptos/mailcow-birthday-daemon:{{ .Major }}"
+      - "git.techniverse.net/scriptos/mailcow-birthday-daemon:{{ .Major }}.{{ .Minor }}"
+      - "git.techniverse.net/scriptos/mailcow-birthday-daemon:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "git.techniverse.net/scriptos/mailcow-birthday-daemon:latest"

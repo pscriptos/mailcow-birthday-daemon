@@ -153,7 +153,7 @@ func icalMatchesBev(ic *ical.Component, bev birthdayEvent) bool {
 func (bev birthdayEvent) generateICAL(calendar string) (string, *ical.Calendar) {
 	id := uuid.New().String()
 	cal := ical.NewCalendar()
-	cal.Props.SetText(ical.PropProductID, "-//Marco98//MailcowBirthdayDaemon//EN")
+	cal.Props.SetText(ical.PropProductID, "-//scriptos//MailcowBirthdayDaemon//EN")
 	cal.Props.SetText(ical.PropVersion, "2.0")
 	event := ical.NewComponent(ical.CompEvent)
 	event.Props.SetText(ical.PropUID, id)

@@ -1,6 +1,25 @@
 MIT License
 
-Copyright (c) 2025 Marco Steiger
+Copyright © 2026 Patrick Asmus
+
+---
+
+Lizenzinhaber
+
+Name:    Patrick Asmus (scriptos)
+Email:   support@techniverse.net
+Website: https://www.patrick-asmus.de
+Blog:    https://www.cleveradmin.de
+
+---
+
+Ursprüngliches Projekt
+
+Dieses Projekt basiert auf der Arbeit von Marco Steiger (Marco98).
+Original-Repository: https://github.com/Marco98/mailcow-birthday-daemon
+Original-Lizenz: MIT License, Copyright (c) 2025 Marco Steiger
+
+---
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,6 +1,6 @@
 FROM scratch
 
-LABEL org.opencontainers.image.source https://github.com/Marco98/mailcow-birthday-daemon
+LABEL org.opencontainers.image.source https://git.techniverse.net/scriptos/mailcow-birthday-daemon
 ENTRYPOINT ["/mailcow-birthday-daemon"]
 
 ENV STATEFILE=/data/state.json

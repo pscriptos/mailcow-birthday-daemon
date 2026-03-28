@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Marco98/mailcow-birthday-daemon/pkg/mailcow"
+	"git.techniverse.net/scriptos/mailcow-birthday-daemon/pkg/mailcow"
 	"github.com/emersion/go-webdav"
 )
 

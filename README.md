@@ -1,5 +1,7 @@
 # Mailcow Birthday Daemon 🎂
 
+> **Fork-Hinweis:** Dieses Projekt ist ein Fork von [Marco98/mailcow-birthday-daemon](https://github.com/Marco98/mailcow-birthday-daemon) und wird hier eigenständig weiterentwickelt.
+
 Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailcow-Mailbox erzeugt und synchronisiert.
 
 Es ist kein Benutzereingriff erforderlich. Alles wird vollautomatisch erledigt.
@@ -11,7 +13,7 @@ Den folgenden Abschnitt in die `docker-compose.override.yml` einfügen:
 ```yaml
 services:
     birthdaydaemon:
-        image: ghcr.io/marco98/mailcow-birthday-daemon:0.1.1
+        image: git.techniverse.net/scriptos/mailcow-birthday-daemon:0.1.1
         restart: always
         environment:
         - MAILCOW_BASE=https://mailcow.host
