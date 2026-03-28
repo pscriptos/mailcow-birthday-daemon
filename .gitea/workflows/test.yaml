@@ -2,8 +2,18 @@ name: Run Tests
 
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'assets/img/**'
+      - 'README.md'
+      - 'LICENSE.md'
   push:
     branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - 'assets/img/**'
+      - 'README.md'
+      - 'LICENSE.md'
 
 jobs:
   test:
