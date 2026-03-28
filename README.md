@@ -17,6 +17,10 @@ Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailco
 
 ## Schnellstart
 
+Den folgenden Abschnitt in eine `docker-compose.override.yml` im Mailcow-Verzeichnis (z. B. `/opt/mailcow-dockerized`) einfügen:
+
+> **Wichtig:** Da `mailcow-dockerized` die eigene `docker-compose.yml` bei Updates überschreibt, müssen eigene Anpassungen immer in der `docker-compose.override.yml` erfolgen. Docker Compose lädt diese Datei automatisch und mergt sie mit der Hauptkonfiguration – eigene Änderungen gehen dadurch bei Mailcow-Updates nicht verloren.
+
 ```yaml
 services:
     birthdaydaemon:
@@ -34,6 +38,13 @@ services:
 
 volumes:
     birthdaydaemon:
+```
+
+Anschließend starten:
+
+```bash
+cd /opt/mailcow-dockerized
+docker compose up -d
 ```
 
 > Alle verfügbaren Image-Tags sind in der [Container Registry](https://git.techniverse.net/scriptos/-/packages/container/mailcow-birthday-daemon) einsehbar.
