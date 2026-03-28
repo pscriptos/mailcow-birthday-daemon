@@ -26,15 +26,17 @@ var (
 )
 
 type Daemon struct {
-	httpClient      *http.Client
-	baseURL         string
-	mailcowClient   mailcow.Client
-	userTokens      map[string]string
-	userTokensLock  *sync.RWMutex
-	stateFilepath   string
-	stateUnsaved    bool
-	calendarName    string
-	oldCalendarName string
+	httpClient          *http.Client
+	baseURL             string
+	mailcowClient       mailcow.Client
+	userTokens          map[string]string
+	userTokensLock      *sync.RWMutex
+	stateFilepath       string
+	stateUnsaved        bool
+	calendarName        string
+	oldCalendarName     string
+	notificationEnabled bool
+	notificationTrigger string
 }
 
 func main() {
@@ -65,13 +67,29 @@ func run() error {
 	if calendarName == "" {
 		calendarName = "Birthdays"
 	}
+	notificationEnabled := strings.EqualFold(os.Getenv("NOTIFICATION_ENABLED"), "true")
+	notificationTrigger := "PT8H"
+	if notificationEnabled {
+		notificationTime := os.Getenv("NOTIFICATION_TIME")
+		if notificationTime == "" {
+			notificationTime = "08:00"
+		}
+		trigger, err := parseNotificationTrigger(notificationTime)
+		if err != nil {
+			return fmt.Errorf("invalid NOTIFICATION_TIME: %w", err)
+		}
+		notificationTrigger = trigger
+		slog.Info("birthday notifications enabled", "time", notificationTime, "trigger", notificationTrigger)
+	}
 	d := &Daemon{
-		userTokens:     make(map[string]string),
-		userTokensLock: &sync.RWMutex{},
-		baseURL:        mailcowBase,
-		stateFilepath:  os.Getenv("STATEFILE"),
-		httpClient:     &http.Client{Transport: buildTransport()},
-		calendarName:   calendarName,
+		userTokens:          make(map[string]string),
+		userTokensLock:      &sync.RWMutex{},
+		baseURL:             mailcowBase,
+		stateFilepath:       os.Getenv("STATEFILE"),
+		httpClient:          &http.Client{Transport: buildTransport()},
+		calendarName:        calendarName,
+		notificationEnabled: notificationEnabled,
+		notificationTrigger: notificationTrigger,
 	}
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
