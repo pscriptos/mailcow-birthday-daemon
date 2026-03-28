@@ -41,3 +41,34 @@ jobs:
           tags: |
             git.techniverse.net/scriptos/mailcow-birthday-daemon:dev
             git.techniverse.net/scriptos/mailcow-birthday-daemon:${{ gitea.sha }}
+
+      - name: Cleanup old SHA-tagged images
+        if: success()
+        run: |
+          API="https://git.techniverse.net/api/v1"
+          OWNER="scriptos"
+          PACKAGE="mailcow-birthday-daemon"
+          KEEP=5
+
+          # Fetch all container package versions
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.REGISTRY_TOKEN }}" \
+            "${API}/packages/${OWNER}?type=container&q=${PACKAGE}&limit=50")
+
+          # Extract only SHA-tagged versions (40-char hex), sorted newest first
+          SHA_VERSIONS=$(echo "$RESPONSE" | \
+            jq -r '[.[] | select(.name == "'"${PACKAGE}"'" and (.version | test("^[0-9a-f]{40}$")))] | sort_by(.created_at) | reverse | .[].version')
+
+          # Keep the newest $KEEP images, delete the rest
+          COUNT=0
+          for VERSION in $SHA_VERSIONS; do
+            COUNT=$((COUNT + 1))
+            if [ $COUNT -le $KEEP ]; then
+              echo "Keeping: ${VERSION:0:12}..."
+              continue
+            fi
+            echo "Deleting: ${VERSION:0:12}..."
+            curl -s -X DELETE \
+              -H "Authorization: token ${{ secrets.REGISTRY_TOKEN }}" \
+              "${API}/packages/${OWNER}/container/${PACKAGE}/${VERSION}"
+          done
+          echo "Cleanup done. Kept $((COUNT < KEEP ? COUNT : KEEP)) of $COUNT SHA-tagged images."
