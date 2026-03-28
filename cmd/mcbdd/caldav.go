@@ -16,8 +16,64 @@ import (
 )
 
 const (
-	ConstCalendarName = "Birthdays"
+	ConstProductID = "-//scriptos//MailcowBirthdayDaemon//EN"
 )
+
+// cleanupOldCalendar prüft, ob ein alter Daemon-Kalender existiert, und löscht
+// ihn nur, wenn alle enthaltenen Events die Daemon-PRODID tragen. Enthält der
+// Kalender fremde Events, wird er nicht gelöscht und eine Warnung geloggt.
+func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPClient, user, oldName string) error {
+	endpoint, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar/")
+	if err != nil {
+		return err
+	}
+	cl, err := caldav.NewClient(httpClient, endpoint)
+	if err != nil {
+		return err
+	}
+	cc, err := cl.FindCalendars(ctx, "")
+	if err != nil {
+		return err
+	}
+	found := false
+	for _, c := range cc {
+		if strings.HasSuffix(c.Path, fmt.Sprintf("/%s", oldName)) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil
+	}
+	calendarPath := fmt.Sprintf("/SOGo/dav/%s/Calendar/%s", user, oldName)
+	events, err := cl.QueryCalendar(ctx, calendarPath, &caldav.CalendarQuery{
+		CompRequest: caldav.CalendarCompRequest{
+			Name: "VCALENDAR",
+		},
+		CompFilter: caldav.CompFilter{
+			Name: "VCALENDAR",
+			Comps: []caldav.CompFilter{{
+				Name: "VEVENT",
+			}},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	for _, ev := range events {
+		prodID := ev.Data.Props.Get(ical.PropProductID)
+		if prodID == nil || prodID.Value != ConstProductID {
+			slog.WarnContext(ctx, "old calendar contains foreign events, skipping cleanup",
+				"user", user, "calendar", oldName)
+			return nil
+		}
+	}
+	if err := cl.RemoveAll(ctx, calendarPath); err != nil {
+		return fmt.Errorf("error removing old calendar: %w", err)
+	}
+	slog.InfoContext(ctx, "removed old birthday calendar", "user", user, "calendar", oldName)
+	return nil
+}
 
 func (d *Daemon) ensureBirthdayCal(ctx context.Context, httpClient webdav.HTTPClient, user string) error {
 	endpoint, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar/")
@@ -33,11 +89,11 @@ func (d *Daemon) ensureBirthdayCal(ctx context.Context, httpClient webdav.HTTPCl
 		return err
 	}
 	for _, c := range cc {
-		if strings.HasSuffix(c.Path, fmt.Sprintf("/%s", ConstCalendarName)) {
+		if strings.HasSuffix(c.Path, fmt.Sprintf("/%s", d.calendarName)) {
 			return nil
 		}
 	}
-	if err := cl.Mkdir(ctx, ConstCalendarName); err != nil {
+	if err := cl.Mkdir(ctx, d.calendarName); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "created birthday calendar", "user", user)
@@ -53,7 +109,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 	if err != nil {
 		return err
 	}
-	calendarPath := fmt.Sprintf("/SOGo/dav/%s/Calendar/%s", user, ConstCalendarName)
+	calendarPath := fmt.Sprintf("/SOGo/dav/%s/Calendar/%s", user, d.calendarName)
 	events, err := cl.QueryCalendar(ctx, calendarPath, &caldav.CalendarQuery{
 		CompRequest: caldav.CalendarCompRequest{
 			Name: "VCALENDAR",
@@ -153,7 +209,7 @@ func icalMatchesBev(ic *ical.Component, bev birthdayEvent) bool {
 func (bev birthdayEvent) generateICAL(calendar string) (string, *ical.Calendar) {
 	id := uuid.New().String()
 	cal := ical.NewCalendar()
-	cal.Props.SetText(ical.PropProductID, "-//Marco98//MailcowBirthdayDaemon//EN")
+	cal.Props.SetText(ical.PropProductID, ConstProductID)
 	cal.Props.SetText(ical.PropVersion, "2.0")
 	event := ical.NewComponent(ical.CompEvent)
 	event.Props.SetText(ical.PropUID, id)

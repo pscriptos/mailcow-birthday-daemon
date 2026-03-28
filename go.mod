@@ -1,4 +1,4 @@
-module github.com/Marco98/mailcow-birthday-daemon
+module git.techniverse.net/scriptos/mailcow-birthday-daemon
 
 go 1.25.4
 

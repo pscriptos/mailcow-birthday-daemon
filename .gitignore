@@ -1,4 +1,5 @@
 /.vscode/
+/.ki-workspace/
 /dist/
 
 .env

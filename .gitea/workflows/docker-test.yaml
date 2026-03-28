@@ -1,0 +1,74 @@
+name: Build Test Docker Image
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'assets/img/**'
+      - 'README.md'
+      - 'LICENSE.md'
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build Go binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o mailcow-birthday-daemon ./cmd/mcbdd
+
+      - name: Login to Gitea Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: git.techniverse.net
+          username: ${{ gitea.actor }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            git.techniverse.net/scriptos/mailcow-birthday-daemon:dev
+            git.techniverse.net/scriptos/mailcow-birthday-daemon:${{ gitea.sha }}
+
+      - name: Cleanup old SHA-tagged images
+        if: success()
+        run: |
+          API="https://git.techniverse.net/api/v1"
+          OWNER="scriptos"
+          PACKAGE="mailcow-birthday-daemon"
+          KEEP=5
+
+          # Fetch all container package versions
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.REGISTRY_TOKEN }}" \
+            "${API}/packages/${OWNER}?type=container&q=${PACKAGE}&limit=50")
+
+          # Extract only SHA-tagged versions (40-char hex), sorted newest first
+          SHA_VERSIONS=$(echo "$RESPONSE" | \
+            jq -r '[.[] | select(.name == "'"${PACKAGE}"'" and (.version | test("^[0-9a-f]{40}$")))] | sort_by(.created_at) | reverse | .[].version')
+
+          # Keep the newest $KEEP images, delete the rest
+          COUNT=0
+          for VERSION in $SHA_VERSIONS; do
+            COUNT=$((COUNT + 1))
+            if [ $COUNT -le $KEEP ]; then
+              echo "Keeping: ${VERSION:0:12}..."
+              continue
+            fi
+            echo "Deleting: ${VERSION:0:12}..."
+            curl -s -X DELETE \
+              -H "Authorization: token ${{ secrets.REGISTRY_TOKEN }}" \
+              "${API}/packages/${OWNER}/container/${PACKAGE}/${VERSION}"
+          done
+          echo "Cleanup done. Kept $((COUNT < KEEP ? COUNT : KEEP)) of $COUNT SHA-tagged images."

@@ -1,37 +1,51 @@
 # Mailcow Birthday Daemon 🎂
 
-Very simple daemon that generates and synchronizes a Birthday Calendar for every Mailcow mailbox.
+> **Fork-Hinweis:** Dieses Projekt ist ein Fork von [Marco98/mailcow-birthday-daemon](https://github.com/Marco98/mailcow-birthday-daemon) und wird hier eigenständig weiterentwickelt.
 
-No user action is required. Everything is handled automatically.
+> **Hinweis zur Entwicklung:** Dieses Projekt wird mit Unterstützung von KI-gestützten Entwicklungswerkzeugen gepflegt. Go ist nicht meine primäre Sprache – umso wichtiger sind sauberer Code, Tests und transparente Entwicklung.
 
-## Installation
+Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailcow-Mailbox erzeugt und synchronisiert. Es ist kein Benutzereingriff erforderlich – alles läuft vollautomatisch.
 
-Just add it to the `docker-compose.override.yml`:
+![Kalenderansicht](assets/img/kalenderansicht.png)
+
+## Kurzübersicht
+
+- Liest Geburtstage aus allen CardDAV-Adressbüchern jeder Mailbox
+- Erstellt und synchronisiert automatisch einen Geburtstagskalender pro Benutzer
+- Synchronisation alle **15 Minuten**
+- Läuft als Docker-Container direkt im Mailcow-Stack
+
+## Schnellstart
 
 ```yaml
 services:
     birthdaydaemon:
-        image: ghcr.io/marco98/mailcow-birthday-daemon:0.1.1
+        image: git.techniverse.net/scriptos/mailcow-birthday-daemon:latest
         restart: always
+        depends_on:
+            - nginx-mailcow
+        networks:
+            - mailcow-network
         environment:
-        - MAILCOW_BASE=https://mailcow.host
-        - MAILCOW_APIKEY=YOUR-APIKEY-HERE
+            - MAILCOW_BASE=https://mail.example.com
+            - MAILCOW_APIKEY=DEIN-APIKEY-HIER
         volumes:
-        - birthdaydaemon:/data
+            - birthdaydaemon:/data
+
 volumes:
     birthdaydaemon:
 ```
 
-The API-Key can be obtained in the admin panel at Configuration > Access > Edit administrator details > API > Read-Write Access
+> Alle verfügbaren Image-Tags sind in der [Container Registry](https://git.techniverse.net/scriptos/-/packages/container/mailcow-birthday-daemon) einsehbar.
 
-As the Mailcow API does not seem to be complete and looks more like a early access, i would strongly advice against enabling "Skip IP check for API".
+## Dokumentation
 
-## How it works
+Die vollständige Dokumentation befindet sich im Ordner [`docs/`](docs/README.md).
 
-- Via the mailcow API a app password with access to carddav and caldav in generated for every user
-    - As every app password in mailcow gets a global autoincrementing number, the app passwords are kept and saved to disk to avoid massively increasing this number
-- All contacts of all address books are fetched and the birthday information is extracted per user
-- The resulting events in the calendar are calculated in advance.
-    - currently hardcoded to: 1 year in past; 10 years in future
-    - Isolated per mailbox of course. A user will only see birthdays of his own contacts.
-- The calculated events will get synchronized to a calendar in every mailbox called "Birthdays" (display name can be renamed by user in SOGo)
+<p align="center">
+  <img src="https://assets.techniverse.net/f1/git/graphics/gray0-catonline.svg" alt="">
+</p>
+
+<p align="center">
+<img src="https://assets.techniverse.net/f1/logos/small/license.png" alt="License" width="15" height="15"> <a href="./LICENSE">License</a> | <img src="https://assets.techniverse.net/f1/logos/small/matrix2.svg" alt="Matrix" width="15" height="15"> <a href="https://matrix.to/#/#community:techniverse.net">Matrix</a> | <img src="https://assets.techniverse.net/f1/logos/small/mastodon2.svg" alt="Mastodon" width="15" height="15"> <a href="https://social.techniverse.net/@donnerwolke">Mastodon</a>
+</p>

@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/Marco98/mailcow-birthday-daemon/pkg/mailcow"
+	"git.techniverse.net/scriptos/mailcow-birthday-daemon/pkg/mailcow"
 	"github.com/emersion/go-webdav"
 )
 
@@ -25,13 +26,15 @@ var (
 )
 
 type Daemon struct {
-	httpClient     *http.Client
-	baseURL        string
-	mailcowClient  mailcow.Client
-	userTokens     map[string]string
-	userTokensLock *sync.RWMutex
-	stateFilepath  string
-	stateUnsaved   bool
+	httpClient      *http.Client
+	baseURL         string
+	mailcowClient   mailcow.Client
+	userTokens      map[string]string
+	userTokensLock  *sync.RWMutex
+	stateFilepath   string
+	stateUnsaved    bool
+	calendarName    string
+	oldCalendarName string
 }
 
 func main() {
@@ -43,6 +46,13 @@ func main() {
 
 func run() error {
 	slog.Info("starting mcbdd", "version", version, "commit", commit, "date", date)
+
+	// Kurze Wartezeit beim Start, damit abhängige Dienste (z. B. nginx)
+	// vollständig hochgefahren sind, bevor Verbindungen aufgebaut werden.
+	const startupDelay = 15 * time.Second
+	slog.Info("waiting for dependent services to become ready", "delay", startupDelay)
+	time.Sleep(startupDelay)
+
 	mailcowBase := os.Getenv("MAILCOW_BASE")
 	if mailcowBase == "" {
 		return fmt.Errorf("MAILCOW_BASE environment variable is not set")
@@ -51,16 +61,17 @@ func run() error {
 	if mailcowAPIKey == "" {
 		return fmt.Errorf("MAILCOW_APIKEY environment variable is not set")
 	}
+	calendarName := os.Getenv("CALENDAR_NAME")
+	if calendarName == "" {
+		calendarName = "Birthdays"
+	}
 	d := &Daemon{
 		userTokens:     make(map[string]string),
 		userTokensLock: &sync.RWMutex{},
 		baseURL:        mailcowBase,
 		stateFilepath:  os.Getenv("STATEFILE"),
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-			},
-		},
+		httpClient:     &http.Client{Transport: buildTransport()},
+		calendarName:   calendarName,
 	}
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
@@ -101,6 +112,7 @@ func (d *Daemon) daemonRun() error {
 		})
 	}
 	eg.Wait()
+	d.oldCalendarName = ""
 	if d.stateUnsaved {
 		slog.Info("saving tokens to disk", "count", len(d.userTokens))
 		if err := d.saveState(); err != nil {
@@ -120,6 +132,11 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 		return fmt.Errorf("error getting userpass: %w", err)
 	}
 	davclient := webdav.HTTPClientWithBasicAuth(d.httpClient, m.Username, pass)
+	if d.oldCalendarName != "" {
+		if err := d.cleanupOldCalendar(ctx, davclient, m.Username, d.oldCalendarName); err != nil {
+			slog.WarnContext(ctx, "error cleaning up old calendar", "err", err, "user", m.Username)
+		}
+	}
 	bb, err := d.getBirthdays(ctx, davclient, m.Username)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "401 Unauthorized: ") {
@@ -138,4 +155,32 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 		return fmt.Errorf("error syncing birthday events to caldav: %w", err)
 	}
 	return nil
+}
+
+// buildTransport erstellt einen http.Transport.
+// Wenn MAILCOW_RESOLVE_HOST gesetzt ist (z. B. "nginx-mailcow"), wird der
+// tatsächliche TCP-Connect auf diesen Host umgeleitet, während TLS-SNI und
+// Zertifikatsprüfung den Original-Hostnamen aus der URL verwenden.
+// Damit wird das Hairpin-NAT-Problem in Docker-Netzen umgangen.
+func buildTransport() *http.Transport {
+	resolveHost := os.Getenv("MAILCOW_RESOLVE_HOST")
+	t := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
+	if resolveHost != "" {
+		slog.Info("using internal resolve host for connections", "resolveHost", resolveHost)
+		dialer := &net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}
+		t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			_, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			addr = net.JoinHostPort(resolveHost, port)
+			return dialer.DialContext(ctx, network, addr)
+		}
+	}
+	return t
 }

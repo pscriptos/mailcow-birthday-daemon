@@ -16,6 +16,7 @@ func (d *Daemon) loadState() error {
 	if err := d.loadFromDisk(&stateVer); err != nil {
 		return fmt.Errorf("cant detect state version: %w", err)
 	}
+	var storedCalendarName string
 	switch stateVer.Version {
 	case 0:
 		slog.Warn("loading old state version", "stateVer", stateVer.Version)
@@ -38,6 +39,30 @@ func (d *Daemon) loadState() error {
 			}
 			d.userTokens[k] = string(dec)
 		}
+		d.stateUnsaved = true
+	case 2:
+		state := struct {
+			Version      int               `json:"version"`
+			UserTokens   map[string]string `json:"userTokens"`
+			CalendarName string            `json:"calendarName"`
+		}{}
+		if err := d.loadFromDisk(&state); err != nil {
+			return fmt.Errorf("cant load state v%d: %w", stateVer.Version, err)
+		}
+		for k, v := range state.UserTokens {
+			dec, err := base64.StdEncoding.DecodeString(v)
+			if err != nil {
+				return fmt.Errorf("cant decode pass from %s: %w", k, err)
+			}
+			d.userTokens[k] = string(dec)
+		}
+		storedCalendarName = state.CalendarName
+	}
+	if storedCalendarName != "" && storedCalendarName != d.calendarName {
+		slog.Info("calendar name changed, old calendars will be cleaned up",
+			"old", storedCalendarName, "new", d.calendarName)
+		d.oldCalendarName = storedCalendarName
+		d.stateUnsaved = true
 	}
 	return nil
 }
@@ -48,11 +73,13 @@ func (d *Daemon) saveState() error {
 		encTokens[k] = base64.StdEncoding.EncodeToString([]byte(v))
 	}
 	state := struct {
-		Version    int               `json:"version"`
-		UserTokens map[string]string `json:"userTokens"`
+		Version      int               `json:"version"`
+		UserTokens   map[string]string `json:"userTokens"`
+		CalendarName string            `json:"calendarName"`
 	}{
-		Version:    1,
-		UserTokens: encTokens,
+		Version:      2,
+		UserTokens:   encTokens,
+		CalendarName: d.calendarName,
 	}
 	return d.saveToDisk(state)
 }
