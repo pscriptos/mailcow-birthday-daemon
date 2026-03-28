@@ -26,13 +26,15 @@ var (
 )
 
 type Daemon struct {
-	httpClient     *http.Client
-	baseURL        string
-	mailcowClient  mailcow.Client
-	userTokens     map[string]string
-	userTokensLock *sync.RWMutex
-	stateFilepath  string
-	stateUnsaved   bool
+	httpClient      *http.Client
+	baseURL         string
+	mailcowClient   mailcow.Client
+	userTokens      map[string]string
+	userTokensLock  *sync.RWMutex
+	stateFilepath   string
+	stateUnsaved    bool
+	calendarName    string
+	oldCalendarName string
 }
 
 func main() {
@@ -52,12 +54,17 @@ func run() error {
 	if mailcowAPIKey == "" {
 		return fmt.Errorf("MAILCOW_APIKEY environment variable is not set")
 	}
+	calendarName := os.Getenv("CALENDAR_NAME")
+	if calendarName == "" {
+		calendarName = "Birthdays"
+	}
 	d := &Daemon{
 		userTokens:     make(map[string]string),
 		userTokensLock: &sync.RWMutex{},
 		baseURL:        mailcowBase,
 		stateFilepath:  os.Getenv("STATEFILE"),
 		httpClient:     &http.Client{Transport: buildTransport()},
+		calendarName:   calendarName,
 	}
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
@@ -98,6 +105,7 @@ func (d *Daemon) daemonRun() error {
 		})
 	}
 	eg.Wait()
+	d.oldCalendarName = ""
 	if d.stateUnsaved {
 		slog.Info("saving tokens to disk", "count", len(d.userTokens))
 		if err := d.saveState(); err != nil {
@@ -117,6 +125,11 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 		return fmt.Errorf("error getting userpass: %w", err)
 	}
 	davclient := webdav.HTTPClientWithBasicAuth(d.httpClient, m.Username, pass)
+	if d.oldCalendarName != "" {
+		if err := d.cleanupOldCalendar(ctx, davclient, m.Username, d.oldCalendarName); err != nil {
+			slog.WarnContext(ctx, "error cleaning up old calendar", "err", err, "user", m.Username)
+		}
+	}
 	bb, err := d.getBirthdays(ctx, davclient, m.Username)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "401 Unauthorized: ") {
