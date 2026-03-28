@@ -46,6 +46,13 @@ func main() {
 
 func run() error {
 	slog.Info("starting mcbdd", "version", version, "commit", commit, "date", date)
+
+	// Kurze Wartezeit beim Start, damit abhängige Dienste (z. B. nginx)
+	// vollständig hochgefahren sind, bevor Verbindungen aufgebaut werden.
+	const startupDelay = 15 * time.Second
+	slog.Info("waiting for dependent services to become ready", "delay", startupDelay)
+	time.Sleep(startupDelay)
+
 	mailcowBase := os.Getenv("MAILCOW_BASE")
 	if mailcowBase == "" {
 		return fmt.Errorf("MAILCOW_BASE environment variable is not set")
