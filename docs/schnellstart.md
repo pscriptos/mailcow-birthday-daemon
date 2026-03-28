@@ -7,7 +7,9 @@
 
 ## Installation
 
-Den folgenden Abschnitt in die `docker-compose.override.yml` der Mailcow-Installation einfügen:
+Den folgenden Abschnitt in die `docker-compose.override.yml` der Mailcow-Installation einfügen (z. B. `/opt/mailcow-dockerized/docker-compose.override.yml`):
+
+> **Warum `docker-compose.override.yml`?** Das Projekt `mailcow-dockerized` verwaltet seine eigene `docker-compose.yml` und überschreibt diese bei Updates. Eigene Ergänzungen in der Hauptdatei würden dadurch verloren gehen. Docker Compose erkennt eine `docker-compose.override.yml` im selben Verzeichnis automatisch und mergt deren Inhalte mit der Hauptkonfiguration. Der Birthday Daemon wird so sauber in den Mailcow-Stack integriert, ohne die originale Konfiguration zu verändern.
 
 ```yaml
 services:
@@ -21,7 +23,7 @@ services:
         environment:
             - MAILCOW_BASE=https://mail.example.com
             - MAILCOW_APIKEY=DEIN-APIKEY-HIER
-            - MAILCOW_RESOLVE_HOST=nginx-mailcow
+            # - MAILCOW_RESOLVE_HOST=nginx-mailcow
             # - NOTIFICATION_ENABLED=true
             # - NOTIFICATION_TIME=08:00
         volumes:
@@ -35,14 +37,18 @@ volumes:
 
 > **Hinweis zu `MAILCOW_RESOLVE_HOST`:** Innerhalb eines Docker-Netzes kann der Container die öffentliche Domain (z. B. `mail.example.com`) oft nicht über die externe IP erreichen – ein typisches **Hairpin-NAT-Problem**. Die Variable `MAILCOW_RESOLVE_HOST=nginx-mailcow` sorgt dafür, dass TCP-Verbindungen direkt an den Mailcow-Nginx-Container im selben Docker-Netz aufgebaut werden, anstatt den Umweg über die öffentliche IP zu nehmen. TLS-SNI und die Zertifikatsprüfung verwenden dabei weiterhin den Hostnamen aus `MAILCOW_BASE`, sodass die Verbindung korrekt verschlüsselt bleibt.
 
-> **Tipp:** Statt `:latest` kann auch eine feste Version wie `:1.0.0` verwendet werden. Alle verfügbaren Tags sind in der [Container Registry](https://git.techniverse.net/scriptos/-/packages/container/mailcow-birthday-daemon) einsehbar.
+> **Tipp:** Statt `:latest` kann auch eine feste Version wie `:0.3.0` verwendet werden. Alle verfügbaren Tags sind in der [Container Registry](https://git.techniverse.net/scriptos/-/packages/container/mailcow-birthday-daemon) einsehbar.
 
 ## Container starten
 
+Nach der Konfiguration der Variablen kann der Container initial gestartet werden.
+
 ```bash
 cd /opt/mailcow-dockerized
-docker compose up -d
+docker compose pull birthdaydaemon && docker compose up -d --no-deps birthdaydaemon
 ```
+
+> **Hinweis:** Nach dem Start wartet der Daemon zunächst **15 Sekunden**, bevor die erste Synchronisation beginnt. Diese Verzögerung stellt sicher, dass abhängige Dienste (z. B. Nginx, SOGo) vollständig bereit sind.
 
 ## Umgebungsvariablen
 
@@ -65,6 +71,7 @@ Den API-Key findet man im Admin-Panel unter Konfiguration → Zugang → Adminis
 ## Prüfen, ob alles läuft
 
 ```bash
+cd /opt/mailcow-dockerized
 docker compose logs -f birthdaydaemon
 ```
 
@@ -72,18 +79,6 @@ Nach dem Start synchronisiert der Daemon automatisch alle 15 Minuten die Geburts
 
 > **Hinweis für bestehende Installationen:** Falls der Daemon die Mailcow-API wegen Hairpin-NAT nicht erreichen kann, muss lediglich `MAILCOW_RESOLVE_HOST=nginx-mailcow` als Umgebungsvariable ergänzt werden. Details siehe [Installationsabschnitt](#installation).
 
-## Funktionsweise
+> **Bei Problemen:** Siehe [Troubleshooting](troubleshooting.md).
 
-- Über die Mailcow-API wird für jeden aktiven Benutzer ein App-Passwort mit Zugriff auf CardDAV und CalDAV erzeugt.
-    - Da jedes App-Passwort in Mailcow eine global hochzählende Nummer erhält, werden die Passwörter auf der Festplatte gespeichert, um das unnötige Ansteigen dieser Nummer zu vermeiden.
-- Alle Kontakte aus sämtlichen Adressbüchern werden abgerufen und die Geburtstagsinformationen je Benutzer extrahiert.
-- Die daraus resultierenden Kalendereinträge werden im Voraus berechnet.
-    - Aktuell fest eingestellt: 1 Jahr in der Vergangenheit, 10 Jahre in der Zukunft.
-    - Selbstverständlich pro Mailbox isoliert – ein Benutzer sieht nur die Geburtstage seiner eigenen Kontakte.
-- Die berechneten Ereignisse werden in einen Kalender synchronisiert, dessen Name über `CALENDAR_NAME` konfigurierbar ist (Standard: „Birthdays"). Der Anzeigename kann vom Benutzer in SOGo zusätzlich umbenannt werden.
-    - Bei Änderung von `CALENDAR_NAME` wird der alte Kalender beim nächsten Start automatisch entfernt und ein neuer mit dem neuen Namen erstellt. Der alte Kalender wird dabei nur gelöscht, wenn er ausschließlich vom Daemon erstellte Einträge enthält – manuell angelegte Kalender mit gleichem Namen bleiben unangetastet.
-    - **Wichtig:** Damit die Umbenennung korrekt erkannt wird, muss der Daemon **mindestens einmal** mit dem neuen Code und dem **alten** Kalendernamen gelaufen sein, damit der Name im State-File gespeichert wird. Erst danach `CALENDAR_NAME` ändern und erneut starten. Wird der Name geändert, bevor der State aktualisiert wurde, kann der alte Kalender nicht automatisch entfernt werden und muss manuell gelöscht werden.
-- Wenn `NOTIFICATION_ENABLED=true` gesetzt ist, erhält jedes Geburtstags-Event einen **VALARM** (iCal-Alarm). Kalender-Clients (SOGo, iOS, Android, Thunderbird) zeigen dann zur konfigurierten Uhrzeit eine Benachrichtigung an. Das Event bleibt weiterhin ein Ganztags-Event.
-    - Bestehende Events ohne VALARM werden beim nächsten Synchronisationszyklus automatisch neu erstellt – keine manuelle Migration nötig.
-    - Falls die Benachrichtigungen wieder deaktiviert werden (`NOTIFICATION_ENABLED=false`), werden Events mit VALARM ebenfalls automatisch durch Events ohne VALARM ersetzt.
-- Der Synchronisationszyklus läuft alle **15 Minuten** automatisch.
+> **Wie funktioniert der Daemon im Detail?** Siehe [Funktionsweise](funktionsweise.md).
