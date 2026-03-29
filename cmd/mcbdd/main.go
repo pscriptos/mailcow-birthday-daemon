@@ -7,8 +7,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"git.techniverse.net/scriptos/mailcow-birthday-daemon/pkg/mailcow"
@@ -67,11 +69,20 @@ func main() {
 func run() error {
 	slog.Info("starting mcbdd", "version", version, "commit", commit, "date", date)
 
+	// Signal-Handling für Graceful Shutdown (SIGTERM, SIGINT).
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
 	// Kurze Wartezeit beim Start, damit abhängige Dienste (z. B. nginx)
 	// vollständig hochgefahren sind, bevor Verbindungen aufgebaut werden.
 	const startupDelay = 15 * time.Second
 	slog.Info("waiting for dependent services to become ready", "delay", startupDelay)
-	time.Sleep(startupDelay)
+	select {
+	case <-time.After(startupDelay):
+	case <-ctx.Done():
+		slog.Info("shutdown signal received during startup, exiting")
+		return nil
+	}
 
 	mailcowBase := os.Getenv("MAILCOW_BASE")
 	if mailcowBase == "" {
@@ -128,18 +139,40 @@ func run() error {
 	if err := d.loadState(); err != nil {
 		return err
 	}
-	d.daemonLoop()
+	d.daemonLoop(ctx)
 	return nil
 }
 
-func (d *Daemon) daemonLoop() {
+func (d *Daemon) daemonLoop(ctx context.Context) {
 	for {
+		// Vor jedem Sync prüfen, ob ein Shutdown angefordert wurde.
+		select {
+		case <-ctx.Done():
+			slog.Info("shutdown signal received, exiting")
+			return
+		default:
+		}
+
 		err := d.daemonRun()
 		d.health.update(err)
 		if err != nil {
 			slog.Error("error while syncing birthdays", "err", err)
 		}
-		time.Sleep(d.syncInterval)
+
+		// Auf nächsten Zyklus oder Shutdown-Signal warten.
+		timer := time.NewTimer(d.syncInterval)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			slog.Info("shutdown signal received, saving state and exiting")
+			if d.stateUnsaved {
+				if err := d.saveState(); err != nil {
+					slog.Error("error saving state during shutdown", "err", err)
+				}
+			}
+			return
+		}
 	}
 }
 

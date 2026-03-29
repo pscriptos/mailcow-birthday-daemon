@@ -33,6 +33,16 @@ Der Mailcow Birthday Daemon synchronisiert automatisch Geburtstagskalender für 
 
 Der Synchronisationszyklus läuft standardmäßig alle **15 Minuten** automatisch. Das Intervall kann über die Umgebungsvariable `SYNC_INTERVAL` angepasst werden (z. B. `SYNC_INTERVAL=30m`). Details zu den möglichen Werten finden sich in der [Umgebungsvariablen-Tabelle](schnellstart.md#umgebungsvariablen).
 
+## Graceful Shutdown
+
+Der Daemon reagiert auf `SIGTERM` und `SIGINT` (z. B. durch `docker stop`) und beendet sich sauber:
+
+1. Der aktuelle Synchronisationszyklus wird noch vollständig abgeschlossen.
+2. Ungespeicherte App-Passwörter werden in die Zustandsdatei geschrieben.
+3. Erst danach beendet sich der Prozess.
+
+Dadurch wird sichergestellt, dass das State-File konsistent bleibt und keine Daten verloren gehen. Auch die Startverzögerung (15 Sekunden) wird bei einem Shutdown-Signal sofort abgebrochen.
+
 ## Healthcheck
 
 - Das Dockerfile enthält eine `HEALTHCHECK`-Anweisung, die den eingebauten Subcommand `healthcheck` nutzt – es werden keine externen Tools wie `curl` oder `wget` benötigt und kein Port wird geöffnet.
