@@ -23,6 +23,7 @@ services:
         environment:
             - MAILCOW_BASE=https://mail.example.com
             - MAILCOW_APIKEY=DEIN-APIKEY-HIER
+            - CALENDAR_NAME=Birthdays
             # - MAILCOW_RESOLVE_HOST=nginx-mailcow
             # - NOTIFICATION_ENABLED=true
             # - NOTIFICATION_TIME=08:00
