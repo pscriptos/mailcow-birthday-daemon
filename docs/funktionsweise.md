@@ -4,6 +4,10 @@
 
 Der Mailcow Birthday Daemon synchronisiert automatisch Geburtstagskalender für jede aktive Mailbox. Der gesamte Prozess läuft ohne Benutzereingriff ab.
 
+## Startup-Connectivity-Check
+
+Beim Start prüft der Daemon aktiv, ob die Mailcow-API und SOGo erreichbar sind, bevor die erste Synchronisation beginnt. Die Prüfung nutzt exponentielles Backoff (2 s → 4 s → … → max 30 s) und wiederholt sich, bis beide Dienste antworten. Im Log wird klar angegeben, welcher Dienst noch nicht bereit ist. Ein Shutdown-Signal bricht den Check sofort ab.
+
 ## App-Passwörter
 
 - Über die Mailcow-API wird für jeden aktiven Benutzer ein App-Passwort mit Zugriff auf CardDAV und CalDAV erzeugt.
@@ -58,7 +62,7 @@ Der Daemon reagiert auf `SIGTERM` und `SIGINT` (z. B. durch `docker stop`) und b
 2. Ungespeicherte App-Passwörter werden in die Zustandsdatei geschrieben.
 3. Erst danach beendet sich der Prozess.
 
-Dadurch wird sichergestellt, dass das State-File konsistent bleibt und keine Daten verloren gehen. Auch die Startverzögerung (15 Sekunden) wird bei einem Shutdown-Signal sofort abgebrochen.
+Dadurch wird sichergestellt, dass das State-File konsistent bleibt und keine Daten verloren gehen. Auch der Startup-Connectivity-Check wird bei einem Shutdown-Signal sofort abgebrochen.
 
 ## Healthcheck
 

@@ -54,7 +54,7 @@ cd /opt/mailcow-dockerized
 docker compose pull birthdaydaemon && docker compose up -d --no-deps birthdaydaemon
 ```
 
-> **Hinweis:** Nach dem Start wartet der Daemon zunächst **15 Sekunden**, bevor die erste Synchronisation beginnt. Diese Verzögerung stellt sicher, dass abhängige Dienste (z. B. Nginx, SOGo) vollständig bereit sind.
+> **Hinweis:** Nach dem Start prüft der Daemon aktiv die Erreichbarkeit der Mailcow-API und SOGo, bevor die erste Synchronisation beginnt. Die Prüfung wiederholt sich mit steigendem Intervall (2 s → 4 s → … → max 30 s), bis beide Dienste antworten. Im Log wird klar angezeigt, welcher Dienst noch nicht bereit ist.
 
 ## Umgebungsvariablen
 

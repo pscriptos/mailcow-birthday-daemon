@@ -99,18 +99,6 @@ func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	// Kurze Wartezeit beim Start, damit abhängige Dienste (z. B. nginx)
-	// vollständig hochgefahren sind, bevor Verbindungen aufgebaut werden.
-	const startupDelay = 15 * time.Second
-	slog.Info("waiting for dependent services to become ready", "delay", startupDelay)
-	select {
-	case <-time.After(startupDelay):
-		slog.Debug("startup delay completed, proceeding with initialization")
-	case <-ctx.Done():
-		slog.Warn("shutdown signal received during startup, exiting")
-		return nil
-	}
-
 	mailcowBase := os.Getenv("MAILCOW_BASE")
 	if mailcowBase == "" {
 		return fmt.Errorf("MAILCOW_BASE environment variable is not set")
@@ -148,6 +136,14 @@ func run() error {
 		"STATEFILE", os.Getenv("STATEFILE"),
 		"MAILBOX_EXCLUDE", os.Getenv("MAILBOX_EXCLUDE"),
 	)
+
+	// Aktive Erreichbarkeitsprüfung: Mailcow-API und SOGo werden wiederholt
+	// geprüft, bevor der erste Sync startet. Damit entfällt der frühere
+	// fixe 15-Sekunden-Delay. Der Check nutzt exponentielles Backoff
+	// (2 s → 4 s → … → max 30 s) und bricht bei Shutdown-Signal sofort ab.
+	if err := waitForServices(ctx, &http.Client{Transport: buildTransport()}, mailcowBase, mailcowAPIKey); err != nil {
+		return err
+	}
 
 	excludeMailboxes := parseMailboxExclude()
 	if len(excludeMailboxes) > 0 {
