@@ -3,8 +3,9 @@
 ## Container startet, aber keine Kalender werden erstellt
 
 1. Logs prüfen: `docker compose logs -f birthdaydaemon`
-2. Sicherstellen, dass der API-Key **Lese- und Schreibzugriff** hat (nicht nur Lesezugriff).
-3. Prüfen, ob die Mailbox aktiv ist – inaktive Mailboxen werden übersprungen.
+2. Für detaillierte Ausgaben `LOG_LEVEL=debug` als Umgebungsvariable setzen – damit werden einzelne Kontakte und Kalendereinträge sichtbar.
+3. Sicherstellen, dass der API-Key **Lese- und Schreibzugriff** hat (nicht nur Lesezugriff).
+4. Prüfen, ob die Mailbox aktiv ist – inaktive Mailboxen werden übersprungen.
 
 ## Verbindungsfehler / Timeout
 

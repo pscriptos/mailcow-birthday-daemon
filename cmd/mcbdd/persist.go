@@ -23,6 +23,7 @@ func (d *Daemon) loadState() error {
 		if err := d.loadFromDisk(&d.userTokens); err != nil {
 			return fmt.Errorf("cant load state v%d: %w", stateVer.Version, err)
 		}
+		slog.Debug("loaded state", "version", stateVer.Version, "users", len(d.userTokens))
 		d.stateUnsaved = true
 	case 1:
 		state := struct {

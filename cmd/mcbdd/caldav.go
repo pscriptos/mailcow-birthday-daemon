@@ -126,7 +126,9 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 	if err != nil {
 		return err
 	}
+	slog.DebugContext(ctx, "queried existing calendar events", "user", user, "count", len(events))
 	bevs := generateBirthdayEvents(birthdays)
+	slog.DebugContext(ctx, "generated birthday events", "user", user, "count", len(bevs))
 	bevsInSync := make([]int, 0)
 	driftedEvents := make([]string, 0)
 	for _, ev := range events {
@@ -145,6 +147,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 	}
 	counterDelete, counterAdded := 0, 0
 	for _, v := range driftedEvents {
+		slog.DebugContext(ctx, "removing drifted calendar event", "user", user, "path", v)
 		if err := cl.RemoveAll(ctx, v); err != nil {
 			return err
 		}
@@ -154,6 +157,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 		if slices.Contains(bevsInSync, i) {
 			continue
 		}
+		slog.DebugContext(ctx, "adding calendar event", "user", user, "summary", v.Summary, "start", v.DateTimeStart)
 		p, ic := v.generateICAL(calendarPath, d.notificationEnabled, d.notificationTrigger)
 		_, err := cl.PutCalendarObject(ctx, p, ic)
 		if err != nil {

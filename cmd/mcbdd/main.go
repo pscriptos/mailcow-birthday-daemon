@@ -43,7 +43,29 @@ type Daemon struct {
 	health              *healthState
 }
 
+// initLogLevel liest die Umgebungsvariable LOG_LEVEL und konfiguriert den
+// globalen slog-Logger entsprechend. Gültige Werte: debug, info, warn, error.
+// Standard: info.
+func initLogLevel() {
+	var level slog.Level
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: level,
+	})))
+}
+
 func main() {
+	initLogLevel()
+
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "cleanup":
@@ -68,6 +90,7 @@ func main() {
 
 func run() error {
 	slog.Info("starting mcbdd", "version", version, "commit", commit, "date", date)
+	slog.Debug("log level configured", "LOG_LEVEL", os.Getenv("LOG_LEVEL"))
 
 	// Signal-Handling für Graceful Shutdown (SIGTERM, SIGINT).
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -181,6 +204,7 @@ func (d *Daemon) daemonRun() error {
 	if err != nil {
 		return fmt.Errorf("error fetching mailboxes: %w", err)
 	}
+	slog.Debug("fetched mailboxes", "count", len(mb))
 	eg := sync.WaitGroup{}
 	for _, m := range mb {
 		eg.Go(func() {
@@ -204,8 +228,10 @@ func (d *Daemon) daemonRun() error {
 
 func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 	if !m.IsActive() {
+		slog.DebugContext(ctx, "skipping inactive mailbox", "user", m.Username)
 		return nil
 	}
+	slog.DebugContext(ctx, "processing user", "user", m.Username)
 	pass, err := d.getUserPass(ctx, m.Username)
 	if err != nil {
 		return fmt.Errorf("error getting userpass: %w", err)

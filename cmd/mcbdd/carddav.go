@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/url"
 	"time"
 
@@ -66,6 +67,7 @@ func (d *Daemon) getBirthdays(ctx context.Context, httpClient webdav.HTTPClient,
 					YearKnown:  yyyy != 0,
 					Type:       ContactTypeBirthday,
 				})
+				slog.DebugContext(ctx, "found birthday contact", "user", user, "name", nn[0].GivenName+" "+nn[0].FamilyName, "date", bdayprop)
 			}
 			{
 				annivprop := v.Card.Value("ANNIVERSARY")
@@ -81,9 +83,11 @@ func (d *Daemon) getBirthdays(ctx context.Context, httpClient webdav.HTTPClient,
 						YearKnown:  yyyy != 0,
 						Type:       ContactTypeAnniversary,
 					})
+					slog.DebugContext(ctx, "found anniversary contact", "user", user, "name", nn[0].GivenName+" "+nn[0].FamilyName, "date", annivprop)
 				}
 			}
 		}
 	}
+	slog.DebugContext(ctx, "collected contacts with dates", "user", user, "count", len(contacts))
 	return contacts, nil
 }

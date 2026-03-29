@@ -23,6 +23,9 @@ func (d *Daemon) getUserPass(ctx context.Context, username string) (string, erro
 			oldIDs = append(oldIDs, p.ID)
 		}
 	}
+	if len(oldIDs) > 0 {
+		slog.DebugContext(ctx, "removing old app passwords", "user", username, "count", len(oldIDs))
+	}
 	if err := d.mailcowClient.DeleteAppPasswords(ctx, oldIDs); err != nil {
 		return "", fmt.Errorf("error deleting app passwords: %w", err)
 	}
