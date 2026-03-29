@@ -1,41 +1,17 @@
-name: Make Release
+name: Build & Publish
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release-Version (z.B. 0.3.3 – ohne v-Prefix)'
-        required: true
-        type: string
+  release:
+    types: [published]
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate version format
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Ungültiges Versionsformat: '$VERSION'. Erwartet: X.Y.Z (z.B. 0.3.3)"
-            exit 1
-          fi
-          echo "VERSION=v${VERSION}" >> $GITHUB_ENV
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Create and push tag
-        run: |
-          git config user.name "Gitea Actions"
-          git config user.email "actions@git.techniverse.net"
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            echo "::error::Tag $VERSION existiert bereits!"
-            exit 1
-          fi
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"
 
       - name: Set up Go
         uses: actions/setup-go@v5
