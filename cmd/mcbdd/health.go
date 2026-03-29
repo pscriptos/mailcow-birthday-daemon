@@ -9,10 +9,17 @@ import (
 	"time"
 )
 
-// maxSyncAge ist die maximale Dauer seit dem letzten Sync-Lauf, bevor der
-// Healthcheck den Daemon als unhealthy meldet. Da der Sync alle 15 Minuten
-// läuft, erlauben wir 20 Minuten Toleranz.
-const maxSyncAge = 20 * time.Minute
+// maxSyncAge berechnet die maximale Dauer seit dem letzten Sync-Lauf, bevor
+// der Healthcheck den Daemon als unhealthy meldet. Die Toleranz beträgt
+// 5 Minuten über dem konfigurierten Sync-Intervall.
+func maxSyncAge() time.Duration {
+	syncInterval, err := parseSyncInterval()
+	if err != nil {
+		// Fallback: 20 Minuten (15m Standard-Intervall + 5m Toleranz).
+		return 20 * time.Minute
+	}
+	return syncInterval + 5*time.Minute
+}
 
 // healthFile ist der Dateiname der Healthcheck-Statusdatei, die neben dem
 // State-File abgelegt wird.
@@ -73,7 +80,7 @@ func runHealthcheck() error {
 	if s.LastError != "" {
 		return fmt.Errorf("last sync failed: %s", s.LastError)
 	}
-	if time.Since(s.LastSync) > maxSyncAge {
+	if time.Since(s.LastSync) > maxSyncAge() {
 		return fmt.Errorf("last sync too old: %s ago", time.Since(s.LastSync).Round(time.Second))
 	}
 	return nil

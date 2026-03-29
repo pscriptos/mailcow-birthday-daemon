@@ -12,7 +12,7 @@ Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailco
 
 - Liest Geburtstage aus allen CardDAV-Adressbüchern jeder Mailbox
 - Erstellt und synchronisiert automatisch einen Geburtstagskalender pro Benutzer
-- Synchronisation alle **15 Minuten**
+- Synchronisation standardmäßig alle **15 Minuten** (konfigurierbar über `SYNC_INTERVAL`)
 - Läuft als Docker-Container direkt im Mailcow-Stack
 
 ## Schnellstart

@@ -27,6 +27,7 @@ services:
             # - MAILCOW_RESOLVE_HOST=nginx-mailcow
             # - NOTIFICATION_ENABLED=true
             # - NOTIFICATION_TIME=08:00
+            # - SYNC_INTERVAL=15m
         volumes:
             - birthdaydaemon:/data
 
@@ -62,6 +63,7 @@ docker compose pull birthdaydaemon && docker compose up -d --no-deps birthdaydae
 | `NOTIFICATION_ENABLED` | Nein | `false` | Aktiviert Kalender-Benachrichtigungen (VALARM) für Geburtstags-Events (`true`/`false`) |
 | `NOTIFICATION_TIME` | Nein | `08:00` | Uhrzeit der Benachrichtigung im Format `HH:MM` (nur wirksam wenn `NOTIFICATION_ENABLED=true`) |
 | `STATEFILE` | Nein | `state.json` (im Container: `/data/state.json`) | Pfad zur Zustandsdatei, in der App-Passwörter und der aktuelle Kalendername gespeichert werden |
+| `SYNC_INTERVAL` | Nein | `15m` | Intervall zwischen den Synchronisationsläufen im Go-Duration-Format (z. B. `10m`, `30m`, `1h`). Mindestwert: `1m`. |
 
 ## API-Key erstellen
 
@@ -78,7 +80,7 @@ cd /opt/mailcow-dockerized
 docker compose logs -f birthdaydaemon
 ```
 
-Nach dem Start synchronisiert der Daemon automatisch alle 15 Minuten die Geburtstagskalender für jede Mailbox.
+Nach dem Start synchronisiert der Daemon automatisch alle 15 Minuten (konfigurierbar über `SYNC_INTERVAL`) die Geburtstagskalender für jede Mailbox.
 
 > **Hinweis für bestehende Installationen:** Falls der Daemon die Mailcow-API wegen Hairpin-NAT nicht erreichen kann, muss lediglich `MAILCOW_RESOLVE_HOST=nginx-mailcow` als Umgebungsvariable ergänzt werden. Details siehe [Installationsabschnitt](#installation).
 
