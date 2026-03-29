@@ -133,7 +133,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 		return err
 	}
 	slog.DebugContext(ctx, "queried existing calendar events", "user", user, "count", len(events))
-	bevs := generateBirthdayEvents(birthdays)
+	bevs := generateBirthdayEvents(birthdays, d.eventYears)
 	slog.DebugContext(ctx, "generated birthday events", "user", user, "count", len(bevs))
 	bevsInSync := make([]int, 0)
 	driftedEvents := make([]string, 0)
@@ -185,11 +185,11 @@ type birthdayEvent struct {
 	DateTimeEnd   string
 }
 
-func generateBirthdayEvents(birthdays []BirthdayContact) []birthdayEvent {
+func generateBirthdayEvents(birthdays []BirthdayContact, eventYears int) []birthdayEvent {
 	cyear := time.Now().Year()
 	bb := make([]birthdayEvent, 0)
 	for _, v := range birthdays {
-		for year := cyear; year <= 10+cyear; year++ {
+		for year := cyear; year <= eventYears+cyear; year++ {
 			yearshift := year - v.Date.Year()
 			prefix := "\U0001F382 " // 🎂
 			if v.Type == ContactTypeAnniversary {

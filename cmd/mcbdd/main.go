@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -39,6 +40,7 @@ type Daemon struct {
 	oldCalendarName     string
 	notificationEnabled bool
 	notificationTrigger string
+	eventYears          int
 	syncInterval        time.Duration
 	excludeMailboxes    map[string]bool
 	health              *healthState
@@ -120,6 +122,11 @@ func run() error {
 		calendarName = "Birthdays"
 	}
 	notificationEnabled := strings.EqualFold(os.Getenv("NOTIFICATION_ENABLED"), "true")
+	eventYears, err := parseEventYears()
+	if err != nil {
+		return err
+	}
+	slog.Info("event horizon configured", "years", eventYears)
 	syncInterval, err := parseSyncInterval()
 	if err != nil {
 		return err
@@ -129,6 +136,7 @@ func run() error {
 		"MAILCOW_BASE", mailcowBase,
 		"CALENDAR_NAME", calendarName,
 		"NOTIFICATION_ENABLED", notificationEnabled,
+		"EVENT_YEARS", eventYears,
 		"MAILCOW_RESOLVE_HOST", os.Getenv("MAILCOW_RESOLVE_HOST"),
 		"STATEFILE", os.Getenv("STATEFILE"),
 		"MAILBOX_EXCLUDE", os.Getenv("MAILBOX_EXCLUDE"),
@@ -166,6 +174,7 @@ func run() error {
 		calendarName:        calendarName,
 		notificationEnabled: notificationEnabled,
 		notificationTrigger: notificationTrigger,
+		eventYears:          eventYears,
 		syncInterval:        syncInterval,
 		excludeMailboxes:    excludeMailboxes,
 	}
@@ -418,6 +427,24 @@ func parseSyncInterval() (time.Duration, error) {
 		return 0, fmt.Errorf("SYNC_INTERVAL must be at least 1m, got %s", d)
 	}
 	return d, nil
+}
+
+// parseEventYears liest EVENT_YEARS aus der Umgebung und gibt die Anzahl
+// der Jahre zurück, für die Geburtstags-Events im Voraus erzeugt werden.
+// Standard: 10. Gültige Werte: 1–30.
+func parseEventYears() (int, error) {
+	raw := os.Getenv("EVENT_YEARS")
+	if raw == "" {
+		return 10, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid EVENT_YEARS %q: %w", raw, err)
+	}
+	if n < 1 || n > 30 {
+		return 0, fmt.Errorf("EVENT_YEARS must be between 1 and 30, got %d", n)
+	}
+	return n, nil
 }
 
 // buildTransport erstellt einen http.Transport.
