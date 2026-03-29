@@ -15,6 +15,8 @@ Der Mailcow Birthday Daemon synchronisiert automatisch Geburtstagskalender für 
 - Zusätzlich zu Geburtstagen werden auch Jahrestage (`ANNIVERSARY`-Feld nach vCard 4.0 / RFC 6350) ausgelesen. Dieses Feld wird von allen gängigen Clients unterstützt (Android, iOS, Thunderbird).
 - Geburtstags-Events erhalten das Präfix 🎂, Jahrestags-Events das Präfix 💍 – so sind beide Typen im Kalender sofort unterscheidbar.
 - Die daraus resultierenden Kalendereinträge werden im Voraus berechnet.
+
+> **Hinweis zu Jahrestagen:** Die SOGo-Weboberfläche bietet kein Feld zum Anzeigen oder Bearbeiten von Jahrestagen. Das `ANNIVERSARY`-Feld muss über einen externen Client (z. B. Thunderbird, Android- oder iOS-Kontakte-App) gepflegt und per CardDAV synchronisiert werden. Das SOGo-CardDAV-Backend speichert und liefert das Feld korrekt – es fehlt lediglich die Unterstützung in der Web-UI.
     - Aktuell fest eingestellt: 1 Jahr in der Vergangenheit, 10 Jahre in der Zukunft.
     - Selbstverständlich pro Mailbox isoliert – ein Benutzer sieht nur die Geburtstage seiner eigenen Kontakte.
 
