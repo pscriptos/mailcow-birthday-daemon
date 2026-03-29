@@ -46,3 +46,10 @@ docker compose exec birthdaydaemon /mailcow-birthday-daemon cleanup Birthdays
 ## Kalender erscheint nicht in SOGo
 
 SOGo zeigt neue Kalender manchmal erst nach einem Neuladen der Seite (Strg+Shift+R) oder nach dem nächsten Login an. Der Kalender wird unter dem Namen erstellt, der in `CALENDAR_NAME` konfiguriert ist (Standard: `Birthdays`).
+
+## Healthcheck meldet `unhealthy`
+
+1. Logs prüfen: `docker compose logs -f birthdaydaemon`
+2. Status manuell abfragen: `docker compose exec birthdaydaemon /mailcow-birthday-daemon healthcheck`
+3. Der Healthcheck meldet `unhealthy`, wenn der letzte Sync-Lauf fehlgeschlagen ist oder länger als 20 Minuten zurückliegt.
+4. Falls der Container gerade erst gestartet wurde, kann es bis zu 2 Minuten dauern, bis der erste Sync abgeschlossen und der Status `healthy` ist.

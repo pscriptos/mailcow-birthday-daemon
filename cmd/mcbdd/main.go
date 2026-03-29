@@ -37,15 +37,25 @@ type Daemon struct {
 	oldCalendarName     string
 	notificationEnabled bool
 	notificationTrigger string
+	health              *healthState
 }
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "cleanup" {
-		if err := runCleanup(); err != nil {
-			slog.Error("cleanup failed", "err", err)
-			os.Exit(1)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "cleanup":
+			if err := runCleanup(); err != nil {
+				slog.Error("cleanup failed", "err", err)
+				os.Exit(1)
+			}
+			return
+		case "healthcheck":
+			if err := runHealthcheck(); err != nil {
+				slog.Error("healthcheck failed", "err", err)
+				os.Exit(1)
+			}
+			return
 		}
-		return
 	}
 	if err := run(); err != nil {
 		slog.Error("fatal error", "err", err)
@@ -101,6 +111,7 @@ func run() error {
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
 	}
+	d.health = newHealthState(d.stateFilepath)
 	d.mailcowClient = mailcow.New(
 		d.httpClient,
 		mailcowBase,
@@ -115,7 +126,9 @@ func run() error {
 
 func (d *Daemon) daemonLoop() {
 	for {
-		if err := d.daemonRun(); err != nil {
+		err := d.daemonRun()
+		d.health.update(err)
+		if err != nil {
 			slog.Error("error while syncing birthdays", "err", err)
 		}
 		time.Sleep(time.Minute * 15)
