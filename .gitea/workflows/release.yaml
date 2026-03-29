@@ -1,12 +1,11 @@
-name: Make Release
+name: Build & Publish
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -32,6 +31,4 @@ jobs:
           args: release --clean
         env:
           GITEA_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
-          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
-          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           GORELEASER_FORCE_TOKEN: gitea

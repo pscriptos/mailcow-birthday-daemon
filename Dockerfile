@@ -9,5 +9,8 @@ ENTRYPOINT ["/mailcow-birthday-daemon"]
 ENV STATEFILE=/data/state.json
 VOLUME [ "/data" ]
 
+HEALTHCHECK --interval=60s --timeout=5s --start-period=30s --retries=3 \
+    CMD ["/mailcow-birthday-daemon", "healthcheck"]
+
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY mailcow-birthday-daemon /mailcow-birthday-daemon

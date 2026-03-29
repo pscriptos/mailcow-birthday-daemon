@@ -32,7 +32,7 @@ func randomPassword(length int) (string, error) {
 	return string(pass), nil
 }
 
-func sanitizeBirthday(input string) (uint16, uint16, uint16, error) {
+func sanitizeDate(input string) (uint16, uint16, uint16, error) {
 	input = strings.ReplaceAll(input, "-", "")
 	switch len(input) {
 	case 4:
@@ -63,7 +63,7 @@ func sanitizeBirthday(input string) (uint16, uint16, uint16, error) {
 		}
 		return uint16(yyyy), uint16(mm), uint16(dd), nil
 	}
-	return 0, 0, 0, fmt.Errorf("birthday prop format unknown: %s", input)
+	return 0, 0, 0, fmt.Errorf("date prop format unknown: %s", input)
 }
 
 // parseNotificationTrigger konvertiert eine Uhrzeit im Format "HH:MM" in eine
