@@ -11,12 +11,15 @@ func (d *Daemon) getUserPass(ctx context.Context, username string) (string, erro
 	pass, ok := d.userTokens[username]
 	d.userTokensLock.RUnlock()
 	if ok {
+		slog.DebugContext(ctx, "using cached app password", "user", username)
 		return pass, nil
 	}
+	slog.DebugContext(ctx, "no cached password found, creating new app password", "user", username)
 	pp, err := d.mailcowClient.GetAppPasswords(ctx, username)
 	if err != nil {
 		return "", err
 	}
+	slog.DebugContext(ctx, "retrieved existing app passwords", "user", username, "total", len(pp))
 	oldIDs := make([]int, 0)
 	for _, p := range pp {
 		if p.Name == ConstUsertokenName {

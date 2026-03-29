@@ -40,8 +40,10 @@ func (d *Daemon) getBirthdays(ctx context.Context, httpClient webdav.HTTPClient,
 	if err != nil {
 		return nil, err
 	}
+	slog.DebugContext(ctx, "found address books", "user", user, "count", len(bb))
 	contacts := make([]BirthdayContact, 0)
 	for _, b := range bb {
+		slog.DebugContext(ctx, "querying address book", "user", user, "path", b.Path)
 		oo, err := cl.QueryAddressBook(ctx, b.Path, &carddav.AddressBookQuery{})
 		if err != nil {
 			if err.Error() == "501 Not Implemented" {

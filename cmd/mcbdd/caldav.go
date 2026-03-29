@@ -23,6 +23,7 @@ const (
 // ihn nur, wenn alle enthaltenen Events die Daemon-PRODID tragen. Enthält der
 // Kalender fremde Events, wird er nicht gelöscht und eine Warnung geloggt.
 func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPClient, user, oldName string) error {
+	slog.DebugContext(ctx, "checking for old calendar to clean up", "user", user, "oldName", oldName)
 	endpoint, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar/")
 	if err != nil {
 		return err
@@ -35,6 +36,7 @@ func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPC
 	if err != nil {
 		return err
 	}
+	slog.DebugContext(ctx, "found calendars", "user", user, "count", len(cc))
 	found := false
 	for _, c := range cc {
 		if strings.HasSuffix(c.Path, fmt.Sprintf("/%s", oldName)) {
@@ -43,8 +45,10 @@ func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPC
 		}
 	}
 	if !found {
+		slog.DebugContext(ctx, "old calendar not found, nothing to clean up", "user", user, "oldName", oldName)
 		return nil
 	}
+	slog.DebugContext(ctx, "old calendar found, checking events", "user", user, "oldName", oldName)
 	calendarPath := fmt.Sprintf("/SOGo/dav/%s/Calendar/%s", user, oldName)
 	events, err := cl.QueryCalendar(ctx, calendarPath, &caldav.CalendarQuery{
 		CompRequest: caldav.CalendarCompRequest{
@@ -76,6 +80,7 @@ func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPC
 }
 
 func (d *Daemon) ensureBirthdayCal(ctx context.Context, httpClient webdav.HTTPClient, user string) error {
+	slog.DebugContext(ctx, "ensuring birthday calendar exists", "user", user, "calendar", d.calendarName)
 	endpoint, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar/")
 	if err != nil {
 		return err
@@ -90,13 +95,14 @@ func (d *Daemon) ensureBirthdayCal(ctx context.Context, httpClient webdav.HTTPCl
 	}
 	for _, c := range cc {
 		if strings.HasSuffix(c.Path, fmt.Sprintf("/%s", d.calendarName)) {
+			slog.DebugContext(ctx, "birthday calendar already exists", "user", user)
 			return nil
 		}
 	}
 	if err := cl.Mkdir(ctx, d.calendarName); err != nil {
 		return err
 	}
-	slog.InfoContext(ctx, "created birthday calendar", "user", user)
+	slog.InfoContext(ctx, "created birthday calendar", "user", user, "calendar", d.calendarName)
 	return nil
 }
 
@@ -167,6 +173,8 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 	}
 	if (counterAdded + counterDelete) > 0 {
 		slog.InfoContext(ctx, "synchronized birthday events", "user", user, "added", counterAdded, "removed", counterDelete)
+	} else {
+		slog.DebugContext(ctx, "birthday events already in sync", "user", user, "total", len(bevs))
 	}
 	return nil
 }

@@ -58,9 +58,7 @@ func initLogLevel() {
 	default:
 		level = slog.LevelInfo
 	}
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: level,
-	})))
+	slog.SetDefault(slog.New(newBracketHandler(os.Stderr, level)))
 }
 
 func main() {
@@ -102,8 +100,9 @@ func run() error {
 	slog.Info("waiting for dependent services to become ready", "delay", startupDelay)
 	select {
 	case <-time.After(startupDelay):
+		slog.Debug("startup delay completed, proceeding with initialization")
 	case <-ctx.Done():
-		slog.Info("shutdown signal received during startup, exiting")
+		slog.Warn("shutdown signal received during startup, exiting")
 		return nil
 	}
 
@@ -125,6 +124,13 @@ func run() error {
 		return err
 	}
 	slog.Info("sync interval configured", "interval", syncInterval)
+	slog.Debug("configuration summary",
+		"MAILCOW_BASE", mailcowBase,
+		"CALENDAR_NAME", calendarName,
+		"NOTIFICATION_ENABLED", notificationEnabled,
+		"MAILCOW_RESOLVE_HOST", os.Getenv("MAILCOW_RESOLVE_HOST"),
+		"STATEFILE", os.Getenv("STATEFILE"),
+	)
 
 	notificationTrigger := "PT8H"
 	if notificationEnabled {
@@ -138,6 +144,8 @@ func run() error {
 		}
 		notificationTrigger = trigger
 		slog.Info("birthday notifications enabled", "time", notificationTime, "trigger", notificationTrigger)
+	} else {
+		slog.Debug("birthday notifications disabled")
 	}
 	d := &Daemon{
 		userTokens:          make(map[string]string),
@@ -153,6 +161,7 @@ func run() error {
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
 	}
+	slog.Debug("state file path", "path", d.stateFilepath)
 	d.health = newHealthState(d.stateFilepath)
 	d.mailcowClient = mailcow.New(
 		d.httpClient,
@@ -162,6 +171,7 @@ func run() error {
 	if err := d.loadState(); err != nil {
 		return err
 	}
+	slog.Info("initialization complete, entering daemon loop")
 	d.daemonLoop(ctx)
 	return nil
 }
@@ -176,12 +186,17 @@ func (d *Daemon) daemonLoop(ctx context.Context) {
 		default:
 		}
 
+		slog.Debug("starting sync cycle")
+		start := time.Now()
 		err := d.daemonRun()
 		d.health.update(err)
 		if err != nil {
 			slog.Error("error while syncing birthdays", "err", err)
+		} else {
+			slog.Info("sync cycle completed", "duration", time.Since(start).Round(time.Millisecond))
 		}
 
+		slog.Debug("waiting for next sync cycle", "interval", d.syncInterval)
 		// Auf nächsten Zyklus oder Shutdown-Signal warten.
 		timer := time.NewTimer(d.syncInterval)
 		select {
@@ -200,11 +215,12 @@ func (d *Daemon) daemonLoop(ctx context.Context) {
 }
 
 func (d *Daemon) daemonRun() error {
+	slog.Debug("fetching mailboxes from mailcow API")
 	mb, err := d.mailcowClient.GetMailboxes(context.Background())
 	if err != nil {
 		return fmt.Errorf("error fetching mailboxes: %w", err)
 	}
-	slog.Debug("fetched mailboxes", "count", len(mb))
+	slog.Info("fetched mailboxes", "count", len(mb))
 	eg := sync.WaitGroup{}
 	for _, m := range mb {
 		eg.Go(func() {
@@ -238,6 +254,7 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 	}
 	davclient := webdav.HTTPClientWithBasicAuth(d.httpClient, m.Username, pass)
 	if d.oldCalendarName != "" {
+		slog.DebugContext(ctx, "cleaning up old calendar", "user", m.Username, "oldName", d.oldCalendarName)
 		if err := d.cleanupOldCalendar(ctx, davclient, m.Username, d.oldCalendarName); err != nil {
 			slog.WarnContext(ctx, "error cleaning up old calendar", "err", err, "user", m.Username)
 		}
@@ -253,12 +270,14 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 		}
 		return fmt.Errorf("error getting birthdays from carddav: %w", err)
 	}
+	slog.DebugContext(ctx, "found birthday contacts", "user", m.Username, "count", len(bb))
 	if err := d.ensureBirthdayCal(ctx, davclient, m.Username); err != nil {
 		return fmt.Errorf("error creating birthday calendar in caldav: %w", err)
 	}
 	if err := d.syncBirthdaysToCal(ctx, davclient, m.Username, bb); err != nil {
 		return fmt.Errorf("error syncing birthday events to caldav: %w", err)
 	}
+	slog.DebugContext(ctx, "user processing complete", "user", m.Username)
 	return nil
 }
 
@@ -272,6 +291,7 @@ func runCleanup() error {
 	oldCalendarName := os.Args[2]
 
 	slog.Info("starting calendar cleanup", "calendarName", oldCalendarName)
+	slog.Debug("loading environment configuration for cleanup")
 
 	mailcowBase := os.Getenv("MAILCOW_BASE")
 	if mailcowBase == "" {
@@ -309,8 +329,10 @@ func runCleanup() error {
 	}
 
 	processed, skipped := 0, 0
+	slog.Debug("starting cleanup for all mailboxes", "totalMailboxes", len(mb))
 	for _, m := range mb {
 		if !m.IsActive() {
+			slog.Debug("skipping inactive mailbox during cleanup", "user", m.Username)
 			continue
 		}
 		d.userTokensLock.RLock()
@@ -322,9 +344,12 @@ func runCleanup() error {
 			continue
 		}
 		ctx := context.Background()
+		slog.Debug("cleaning up calendar for user", "user", m.Username, "calendar", oldCalendarName)
 		davclient := webdav.HTTPClientWithBasicAuth(d.httpClient, m.Username, pass)
 		if err := d.cleanupOldCalendar(ctx, davclient, m.Username, oldCalendarName); err != nil {
 			slog.Error("error cleaning up calendar", "user", m.Username, "err", err)
+		} else {
+			slog.Debug("calendar cleanup successful for user", "user", m.Username)
 		}
 		processed++
 	}
