@@ -21,7 +21,6 @@ Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailco
 - Startup-Connectivity-Check, Graceful Shutdown und Docker-Healthcheck
 - Hairpin-NAT-Lösung via `MAILCOW_RESOLVE_HOST` für Docker-Netze
 - Strukturiertes Logging mit konfigurierbarem Log-Level
-- Synchronisation standardmäßig alle **15 Minuten** (konfigurierbar über `SYNC_INTERVAL`)
 - Läuft als Docker-Container direkt im Mailcow-Stack
 
 ## Schnellstart
