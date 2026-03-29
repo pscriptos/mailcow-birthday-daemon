@@ -179,8 +179,12 @@ func generateBirthdayEvents(birthdays []BirthdayContact) []birthdayEvent {
 	for _, v := range birthdays {
 		for year := cyear; year <= 10+cyear; year++ {
 			yearshift := year - v.Date.Year()
+			prefix := "\U0001F382 " // 🎂
+			if v.Type == ContactTypeAnniversary {
+				prefix = "\U0001F48D " // 💍
+			}
 			ev := birthdayEvent{
-				Summary:       fmt.Sprintf("%s %s", v.GivenName, v.FamilyName),
+				Summary:       fmt.Sprintf("%s%s %s", prefix, v.GivenName, v.FamilyName),
 				DateTimeStart: v.Date.AddDate(yearshift, 0, 0).Format("20060102"),
 				DateTimeEnd:   v.Date.AddDate(yearshift, 0, 1).Format("20060102"),
 			}
