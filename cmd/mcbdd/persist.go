@@ -47,9 +47,10 @@ func (d *Daemon) loadState() error {
 	case 2:
 		slog.Debug("loading current state format", "stateVer", stateVer.Version)
 		state := struct {
-			Version      int               `json:"version"`
-			UserTokens   map[string]string `json:"userTokens"`
-			CalendarName string            `json:"calendarName"`
+			Version       int               `json:"version"`
+			UserTokens    map[string]string `json:"userTokens"`
+			CalendarName  string            `json:"calendarName"`
+			CalendarColor string            `json:"calendarColor,omitempty"`
 		}{}
 		if err := d.loadFromDisk(&state); err != nil {
 			return fmt.Errorf("cant load state v%d: %w", stateVer.Version, err)
@@ -62,12 +63,20 @@ func (d *Daemon) loadState() error {
 			d.userTokens[k] = string(dec)
 		}
 		storedCalendarName = state.CalendarName
+		d.storedCalendarColor = state.CalendarColor
 	}
 	slog.Info("state loaded", "users", len(d.userTokens))
 	if storedCalendarName != "" && storedCalendarName != d.calendarName {
 		slog.Info("calendar name changed, old calendars will be cleaned up",
 			"old", storedCalendarName, "new", d.calendarName)
 		d.oldCalendarName = storedCalendarName
+		d.stateUnsaved = true
+	}
+	if normalizeColor(d.storedCalendarColor) != normalizeColor(d.calendarColor) {
+		if d.storedCalendarColor != "" {
+			slog.Info("calendar color configuration changed",
+				"old", d.storedCalendarColor, "new", d.calendarColor)
+		}
 		d.stateUnsaved = true
 	}
 	return nil
@@ -80,13 +89,15 @@ func (d *Daemon) saveState() error {
 		encTokens[k] = base64.StdEncoding.EncodeToString([]byte(v))
 	}
 	state := struct {
-		Version      int               `json:"version"`
-		UserTokens   map[string]string `json:"userTokens"`
-		CalendarName string            `json:"calendarName"`
+		Version       int               `json:"version"`
+		UserTokens    map[string]string `json:"userTokens"`
+		CalendarName  string            `json:"calendarName"`
+		CalendarColor string            `json:"calendarColor,omitempty"`
 	}{
-		Version:      2,
-		UserTokens:   encTokens,
-		CalendarName: d.calendarName,
+		Version:       2,
+		UserTokens:    encTokens,
+		CalendarName:  d.calendarName,
+		CalendarColor: d.calendarColor,
 	}
 	if err := d.saveToDisk(state); err != nil {
 		return err

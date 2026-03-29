@@ -24,6 +24,7 @@ services:
             - MAILCOW_BASE=https://mail.example.com
             - MAILCOW_APIKEY=DEIN-APIKEY-HIER
             - CALENDAR_NAME=Birthdays
+            # - CALENDAR_COLOR=#D01818
             # - MAILCOW_RESOLVE_HOST=nginx-mailcow
             # - NOTIFICATION_ENABLED=true
             # - NOTIFICATION_TIME=08:00
@@ -63,6 +64,7 @@ docker compose pull birthdaydaemon && docker compose up -d --no-deps birthdaydae
 | `MAILCOW_APIKEY` | **Ja** | – | API-Key mit Lese-/Schreibzugriff aus dem Mailcow-Admin-Panel |
 | `MAILCOW_RESOLVE_HOST` | Nein | – | Interner Hostname für TCP-Verbindungen (z. B. `nginx-mailcow`). Löst Hairpin-NAT-Probleme in Docker-Netzen. TLS nutzt weiterhin den Hostnamen aus `MAILCOW_BASE`. |
 | `CALENDAR_NAME` | Nein | `Birthdays` | Name des Geburtstagskalenders, der in jeder Mailbox erstellt wird |
+| `CALENDAR_COLOR` | Nein | `#D01818` | Farbe des Geburtstagskalenders im Hex-Format (z. B. `#FF6600`). Wird nur gesetzt, wenn der Benutzer die Farbe nicht manuell geändert hat. |
 | `NOTIFICATION_ENABLED` | Nein | `false` | Aktiviert Kalender-Benachrichtigungen (VALARM) für Geburtstags-Events (`true`/`false`) |
 | `NOTIFICATION_TIME` | Nein | `08:00` | Uhrzeit der Benachrichtigung im Format `HH:MM` (nur wirksam wenn `NOTIFICATION_ENABLED=true`) |
 | `STATEFILE` | Nein | `state.json` (im Container: `/data/state.json`) | Pfad zur Zustandsdatei, in der App-Passwörter und der aktuelle Kalendername gespeichert werden |

@@ -33,6 +33,13 @@ Die Variable kann jederzeit – auch bei bestehenden Installationen – per Upda
 
 > **Wichtig (betrifft nur Updates von vor v0.2.0):** Damit die Umbenennung korrekt erkannt wird, muss der Daemon **mindestens einmal** mit dem neuen Code (ab v0.2.0) und dem **alten** Kalendernamen gelaufen sein, damit der Name im State-File gespeichert wird. Erst danach `CALENDAR_NAME` ändern und erneut starten. Wird der Name geändert, bevor der State aktualisiert wurde, kann der alte Kalender nicht automatisch entfernt werden. In diesem Fall kann der integrierte Cleanup-Befehl verwendet werden (siehe [Troubleshooting](troubleshooting.md#doppelte-kalender-nach-umbenennung-von-calendar_name)).
 
+## Kalenderfarbe
+
+- Der Daemon setzt automatisch die CalDAV-Property `calendar-color` (Apple-Namespace) auf dem Geburtstagskalender. Dadurch hebt sich der Kalender im Client farblich sofort ab.
+- Die Farbe ist über `CALENDAR_COLOR` konfigurierbar (Standard: `#D01818`). Das Format ist `#RRGGBB`.
+- Hat ein Benutzer die Farbe seines Kalenders manuell geändert (z. B. in SOGo oder einem anderen Client), wird diese Anpassung respektiert und nicht überschrieben.
+- Bei einer Änderung von `CALENDAR_COLOR` werden alle Kalender aktualisiert, deren Farbe nicht manuell angepasst wurde.
+
 ## Benachrichtigungen
 
 - Wenn `NOTIFICATION_ENABLED=true` gesetzt ist, erhält jedes Geburtstags-Event einen **VALARM** (iCal-Alarm). Kalender-Clients (SOGo, iOS, Android, Thunderbird) zeigen dann zur konfigurierten Uhrzeit eine Benachrichtigung an. Das Event bleibt weiterhin ein Ganztags-Event.

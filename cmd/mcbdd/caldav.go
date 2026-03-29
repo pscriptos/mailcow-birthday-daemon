@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"slices"
 	"strings"
@@ -269,4 +271,157 @@ func (bev birthdayEvent) generateICAL(calendar string, notificationEnabled bool,
 	}
 	cal.Children = append(cal.Children, event)
 	return fmt.Sprintf("%s/%s.ics", calendar, id), cal
+}
+
+// XML-Strukturen für das Parsen der PROPFIND-Antwort (calendar-color).
+type multistatusResponse struct {
+	XMLName   xml.Name      `xml:"DAV: multistatus"`
+	Responses []davResponse `xml:"DAV: response"`
+}
+
+type davResponse struct {
+	Href      string        `xml:"DAV: href"`
+	PropStats []davPropStat `xml:"DAV: propstat"`
+}
+
+type davPropStat struct {
+	Prop   davProp `xml:"DAV: prop"`
+	Status string  `xml:"DAV: status"`
+}
+
+type davProp struct {
+	CalendarColor string `xml:"http://apple.com/ns/ical/ calendar-color"`
+}
+
+// normalizeColor bringt eine Kalenderfarbe in ein einheitliches Format (#rrggbb,
+// Kleinbuchstaben, ohne Alpha-Kanal), damit zuverlässig verglichen werden kann.
+func normalizeColor(c string) string {
+	c = strings.TrimSpace(strings.ToLower(c))
+	if len(c) == 9 && strings.HasPrefix(c, "#") {
+		c = c[:7]
+	}
+	return c
+}
+
+// getCalendarColor liest die calendar-color-Property (Apple-Namespace) des
+// Geburtstagskalenders per PROPFIND aus und gibt sie normalisiert zurück.
+func (d *Daemon) getCalendarColor(ctx context.Context, httpClient webdav.HTTPClient, user string) (string, error) {
+	calendarURL, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar", d.calendarName)
+	if err != nil {
+		return "", err
+	}
+	body := `<?xml version="1.0" encoding="UTF-8"?>
+<d:propfind xmlns:d="DAV:" xmlns:A="http://apple.com/ns/ical/">
+  <d:prop>
+    <A:calendar-color/>
+  </d:prop>
+</d:propfind>`
+	req, err := http.NewRequestWithContext(ctx, "PROPFIND", calendarURL, strings.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+	req.Header.Set("Depth", "0")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMultiStatus {
+		return "", fmt.Errorf("PROPFIND calendar-color returned status %d", resp.StatusCode)
+	}
+
+	var ms multistatusResponse
+	if err := xml.NewDecoder(resp.Body).Decode(&ms); err != nil {
+		return "", fmt.Errorf("error parsing PROPFIND response: %w", err)
+	}
+
+	for _, r := range ms.Responses {
+		for _, ps := range r.PropStats {
+			if ps.Prop.CalendarColor != "" {
+				return normalizeColor(ps.Prop.CalendarColor), nil
+			}
+		}
+	}
+	return "", nil
+}
+
+// setCalendarColor setzt die calendar-color-Property (Apple-Namespace) des
+// Geburtstagskalenders per PROPPATCH. Die Farbe wird mit Alpha-Kanal (#RRGGBBFF)
+// übertragen, da SOGo dieses Format erwartet.
+func (d *Daemon) setCalendarColor(ctx context.Context, httpClient webdav.HTTPClient, user, color string) error {
+	calendarURL, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar", d.calendarName)
+	if err != nil {
+		return err
+	}
+	colorValue := strings.ToUpper(color)
+	if len(colorValue) == 7 {
+		colorValue += "FF"
+	}
+	body := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<d:propertyupdate xmlns:d="DAV:" xmlns:A="http://apple.com/ns/ical/">
+  <d:set>
+    <d:prop>
+      <A:calendar-color>%s</A:calendar-color>
+    </d:prop>
+  </d:set>
+</d:propertyupdate>`, colorValue)
+
+	req, err := http.NewRequestWithContext(ctx, "PROPPATCH", calendarURL, strings.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMultiStatus && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("PROPPATCH calendar-color returned status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// ensureCalendarColor stellt sicher, dass der Geburtstagskalender die
+// konfigurierte Farbe hat, sofern der Benutzer sie nicht manuell geändert hat.
+// Die Erkennung manueller Änderungen basiert auf dem Vergleich zwischen der
+// aktuellen Kalenderfarbe und der zuletzt vom Daemon gesetzten Farbe (aus dem
+// State-File). Stimmen diese nicht überein, wurde die Farbe vom Benutzer
+// angepasst und wird nicht überschrieben.
+func (d *Daemon) ensureCalendarColor(ctx context.Context, httpClient webdav.HTTPClient, user string) error {
+	if d.calendarColor == "" {
+		return nil
+	}
+
+	current, err := d.getCalendarColor(ctx, httpClient, user)
+	if err != nil {
+		return fmt.Errorf("error reading calendar color: %w", err)
+	}
+
+	desired := normalizeColor(d.calendarColor)
+	stored := normalizeColor(d.storedCalendarColor)
+
+	if current == desired {
+		slog.DebugContext(ctx, "calendar color already correct", "user", user, "color", desired)
+		return nil
+	}
+
+	// Wenn der Benutzer die Farbe manuell geändert hat (current != stored && current != ""),
+	// wird die Farbe nicht überschrieben.
+	if current != "" && stored != "" && current != stored {
+		slog.DebugContext(ctx, "calendar color was customized by user, skipping",
+			"user", user, "current", current, "daemon", stored)
+		return nil
+	}
+
+	if err := d.setCalendarColor(ctx, httpClient, user, desired); err != nil {
+		return fmt.Errorf("error setting calendar color: %w", err)
+	}
+	slog.InfoContext(ctx, "set calendar color", "user", user, "color", desired)
+	return nil
 }

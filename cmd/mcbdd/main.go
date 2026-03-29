@@ -38,6 +38,8 @@ type Daemon struct {
 	stateUnsaved        bool
 	calendarName        string
 	oldCalendarName     string
+	calendarColor       string
+	storedCalendarColor string
 	notificationEnabled bool
 	notificationTrigger string
 	eventYears          int
@@ -121,6 +123,10 @@ func run() error {
 	if calendarName == "" {
 		calendarName = "Birthdays"
 	}
+	calendarColor := os.Getenv("CALENDAR_COLOR")
+	if calendarColor == "" {
+		calendarColor = "#D01818"
+	}
 	notificationEnabled := strings.EqualFold(os.Getenv("NOTIFICATION_ENABLED"), "true")
 	eventYears, err := parseEventYears()
 	if err != nil {
@@ -135,6 +141,7 @@ func run() error {
 	slog.Debug("configuration summary",
 		"MAILCOW_BASE", mailcowBase,
 		"CALENDAR_NAME", calendarName,
+		"CALENDAR_COLOR", calendarColor,
 		"NOTIFICATION_ENABLED", notificationEnabled,
 		"EVENT_YEARS", eventYears,
 		"MAILCOW_RESOLVE_HOST", os.Getenv("MAILCOW_RESOLVE_HOST"),
@@ -172,6 +179,7 @@ func run() error {
 		stateFilepath:       os.Getenv("STATEFILE"),
 		httpClient:          &http.Client{Transport: buildTransport()},
 		calendarName:        calendarName,
+		calendarColor:       calendarColor,
 		notificationEnabled: notificationEnabled,
 		notificationTrigger: notificationTrigger,
 		eventYears:          eventYears,
@@ -306,6 +314,9 @@ func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 	slog.DebugContext(ctx, "found birthday contacts", "user", m.Username, "count", len(bb))
 	if err := d.ensureBirthdayCal(ctx, davclient, m.Username); err != nil {
 		return fmt.Errorf("error creating birthday calendar in caldav: %w", err)
+	}
+	if err := d.ensureCalendarColor(ctx, davclient, m.Username); err != nil {
+		slog.WarnContext(ctx, "error setting calendar color", "user", m.Username, "err", err)
 	}
 	if err := d.syncBirthdaysToCal(ctx, davclient, m.Username, bb); err != nil {
 		return fmt.Errorf("error syncing birthday events to caldav: %w", err)
