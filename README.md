@@ -40,6 +40,8 @@ volumes:
     birthdaydaemon:
 ```
 
+> **Hinweis:** Das obige Beispiel zeigt nur die minimal nötigen Umgebungsvariablen. Eine vollständige Übersicht aller verfügbaren Umgebungsvariablen findest du im [Schnellstart](docs/schnellstart.md).
+
 Anschließend starten:
 
 ```bash
