@@ -52,7 +52,7 @@ Die Variable kann jederzeit – auch bei bestehenden Installationen – per Upda
 
 ## Synchronisationsintervall
 
-Der Synchronisationszyklus läuft standardmäßig alle **15 Minuten** automatisch. Das Intervall kann über die Umgebungsvariable `SYNC_INTERVAL` angepasst werden (z. B. `SYNC_INTERVAL=30m`). Details zu den möglichen Werten finden sich in der [Umgebungsvariablen-Tabelle](schnellstart.md#umgebungsvariablen).
+Der Synchronisationszyklus läuft standardmäßig alle **15 Minuten** automatisch. Das Intervall kann über die Umgebungsvariable `SYNC_INTERVAL` angepasst werden (z. B. `SYNC_INTERVAL=30m`). Details zu den möglichen Werten finden sich in der [Umgebungsvariablen-Tabelle](schnellstart.md#umgebungsvariablen).
 
 ## Graceful Shutdown
 

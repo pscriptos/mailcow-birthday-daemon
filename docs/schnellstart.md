@@ -72,6 +72,7 @@ docker compose pull birthdaydaemon && docker compose up -d --no-deps birthdaydae
 | `EVENT_YEARS` | Nein | `10` | Anzahl der Jahre, für die Geburtstags-Events im Voraus erzeugt werden. Gültige Werte: `1`–`30`. Kleinere Werte können die Performance in Kalender-Clients verbessern. |
 | `MAILBOX_EXCLUDE` | Nein | – | Kommagetrennte Liste von Mailadressen, die von der Synchronisation ausgeschlossen werden (z. B. `admin@example.com,noreply@example.com`). Standardmäßig erhalten alle aktiven Mailboxen einen Geburtstagskalender. |
 | `LOG_LEVEL` | Nein | `info` | Log-Verbosity: `debug`, `info`, `warn` oder `error`. Im `debug`-Modus werden einzelne Kalendereinträge (hinzugefügt/entfernt) und Kontaktdetails geloggt. |
+
 ## API-Key erstellen
 
 Den API-Key findet man im Admin-Panel unter Konfiguration → Zugang → Administratordetails bearbeiten → API → Lese-/Schreibzugriff.

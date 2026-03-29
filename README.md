@@ -10,8 +10,17 @@ Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailco
 
 ## Kurzübersicht
 
-- Liest Geburtstage aus allen CardDAV-Adressbüchern jeder Mailbox
+- Liest Geburtstage und Jahrestage aus allen CardDAV-Adressbüchern jeder Mailbox
 - Erstellt und synchronisiert automatisch einen Geburtstagskalender pro Benutzer
+- Konfigurierbarer Kalendername (`CALENDAR_NAME`) und Kalenderfarbe (`CALENDAR_COLOR`)
+- Optionale Benachrichtigungen (VALARM) zur konfigurierbarer Uhrzeit
+- Konfigurierbares Sync-Intervall (`SYNC_INTERVAL`) und Event-Horizont (`EVENT_YEARS`)
+- Mailboxen einzeln ausschließbar via `MAILBOX_EXCLUDE`
+- Automatische App-Passwort-Verwaltung (persistent im State-File)
+- Integrierter Cleanup-Befehl bei doppelten Kalendern nach Umbenennung
+- Startup-Connectivity-Check, Graceful Shutdown und Docker-Healthcheck
+- Hairpin-NAT-Lösung via `MAILCOW_RESOLVE_HOST` für Docker-Netze
+- Strukturiertes Logging mit konfigurierbarem Log-Level
 - Synchronisation standardmäßig alle **15 Minuten** (konfigurierbar über `SYNC_INTERVAL`)
 - Läuft als Docker-Container direkt im Mailcow-Stack
 
