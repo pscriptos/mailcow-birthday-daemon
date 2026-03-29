@@ -32,3 +32,10 @@ Der Mailcow Birthday Daemon synchronisiert automatisch Geburtstagskalender für 
 ## Synchronisationsintervall
 
 Der Synchronisationszyklus läuft alle **15 Minuten** automatisch.
+
+## Healthcheck
+
+- Das Dockerfile enthält eine `HEALTHCHECK`-Anweisung, die den eingebauten Subcommand `healthcheck` nutzt – es werden keine externen Tools wie `curl` oder `wget` benötigt und kein Port wird geöffnet.
+- Nach jedem Sync-Lauf schreibt der Daemon eine kleine Statusdatei (`health.json`) neben das State-File. Der `healthcheck`-Subcommand liest diese Datei und prüft, ob der letzte Sync aktuell und fehlerfrei war.
+- Docker zeigt den Status in `docker ps` als `(healthy)` oder `(unhealthy)` an.
+- Der Healthcheck meldet **unhealthy**, wenn der letzte Sync-Lauf fehlgeschlagen ist oder länger als 20 Minuten zurückliegt. Während der Startphase (bevor der erste Sync abgeschlossen ist) gilt der Daemon als healthy.
