@@ -117,5 +117,3 @@ func checkSOGo(ctx context.Context, httpClient *http.Client, baseURL string) boo
 	slog.Debug("SOGo is reachable", "status", resp.StatusCode)
 	return true
 }
-
-
