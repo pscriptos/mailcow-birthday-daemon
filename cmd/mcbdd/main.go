@@ -37,6 +37,7 @@ type Daemon struct {
 	oldCalendarName     string
 	notificationEnabled bool
 	notificationTrigger string
+	syncInterval        time.Duration
 	health              *healthState
 }
 
@@ -85,6 +86,12 @@ func run() error {
 		calendarName = "Birthdays"
 	}
 	notificationEnabled := strings.EqualFold(os.Getenv("NOTIFICATION_ENABLED"), "true")
+	syncInterval, err := parseSyncInterval()
+	if err != nil {
+		return err
+	}
+	slog.Info("sync interval configured", "interval", syncInterval)
+
 	notificationTrigger := "PT8H"
 	if notificationEnabled {
 		notificationTime := os.Getenv("NOTIFICATION_TIME")
@@ -107,6 +114,7 @@ func run() error {
 		calendarName:        calendarName,
 		notificationEnabled: notificationEnabled,
 		notificationTrigger: notificationTrigger,
+		syncInterval:        syncInterval,
 	}
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
@@ -131,7 +139,7 @@ func (d *Daemon) daemonLoop() {
 		if err != nil {
 			slog.Error("error while syncing birthdays", "err", err)
 		}
-		time.Sleep(time.Minute * 15)
+		time.Sleep(d.syncInterval)
 	}
 }
 
@@ -264,6 +272,23 @@ func runCleanup() error {
 
 	slog.Info("cleanup finished", "processed", processed, "skipped", skipped)
 	return nil
+}
+
+// parseSyncInterval liest SYNC_INTERVAL aus der Umgebung und gibt die
+// geparste Dauer zurück. Standard: 15m.
+func parseSyncInterval() (time.Duration, error) {
+	raw := os.Getenv("SYNC_INTERVAL")
+	if raw == "" {
+		return 15 * time.Minute, nil
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid SYNC_INTERVAL %q: %w", raw, err)
+	}
+	if d < 1*time.Minute {
+		return 0, fmt.Errorf("SYNC_INTERVAL must be at least 1m, got %s", d)
+	}
+	return d, nil
 }
 
 // buildTransport erstellt einen http.Transport.
