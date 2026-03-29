@@ -3,8 +3,9 @@
 ## Container startet, aber keine Kalender werden erstellt
 
 1. Logs prüfen: `docker compose logs -f birthdaydaemon`
-2. Sicherstellen, dass der API-Key **Lese- und Schreibzugriff** hat (nicht nur Lesezugriff).
-3. Prüfen, ob die Mailbox aktiv ist – inaktive Mailboxen werden übersprungen.
+2. Für detaillierte Ausgaben `LOG_LEVEL=debug` als Umgebungsvariable setzen – damit werden einzelne Kontakte und Kalendereinträge sichtbar.
+3. Sicherstellen, dass der API-Key **Lese- und Schreibzugriff** hat (nicht nur Lesezugriff).
+4. Prüfen, ob die Mailbox aktiv ist – inaktive Mailboxen werden übersprungen.
 
 ## Verbindungsfehler / Timeout
 
@@ -33,12 +34,12 @@ docker compose exec birthdaydaemon /mailcow-birthday-daemon cleanup Birthdays
 **Beispielausgabe:**
 
 ```
-2026/03/28 23:46:22 INFO starting calendar cleanup calendarName=Birthdays
-2026/03/28 23:46:22 INFO using internal resolve host for connections resolveHost=nginx-mailcow
-2026/03/28 23:46:22 INFO removed old birthday calendar user=user1@example.com calendar=Birthdays
-2026/03/28 23:46:23 INFO removed old birthday calendar user=user2@example.com calendar=Birthdays
-2026/03/28 23:46:23 INFO removed old birthday calendar user=user3@example.com calendar=Birthdays
-2026/03/28 23:46:24 INFO cleanup finished processed=5 skipped=0
+2026/03/28 23:46:22 [INFO] starting calendar cleanup calendarName=Birthdays
+2026/03/28 23:46:22 [INFO] using internal resolve host for connections resolveHost=nginx-mailcow
+2026/03/28 23:46:22 [INFO] removed old birthday calendar user=user1@example.com calendar=Birthdays
+2026/03/28 23:46:23 [INFO] removed old birthday calendar user=user2@example.com calendar=Birthdays
+2026/03/28 23:46:23 [INFO] removed old birthday calendar user=user3@example.com calendar=Birthdays
+2026/03/28 23:46:24 [INFO] cleanup finished processed=5 skipped=0
 ```
 
 > **Hinweis:** Der Daemon muss vorher mindestens einmal gelaufen sein, damit App-Passwörter im State-File vorhanden sind. Benutzer ohne gespeichertes Passwort werden übersprungen.

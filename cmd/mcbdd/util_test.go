@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-func Test_sanitizeBirthday(t *testing.T) {
+func Test_sanitizeDate(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
@@ -47,24 +47,24 @@ func Test_sanitizeBirthday(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got2, got3, gotErr := sanitizeBirthday(tt.input)
+			got, got2, got3, gotErr := sanitizeDate(tt.input)
 			if gotErr != nil {
 				if !tt.wantErr {
-					t.Errorf("sanitizeBirthday() failed: %v", gotErr)
+					t.Errorf("sanitizeDate() failed: %v", gotErr)
 				}
 				return
 			}
 			if tt.wantErr {
-				t.Fatal("sanitizeBirthday() succeeded unexpectedly")
+				t.Fatal("sanitizeDate() succeeded unexpectedly")
 			}
 			if got != tt.want {
-				t.Errorf("sanitizeBirthday() = %v, want %v", got, tt.want)
+				t.Errorf("sanitizeDate() = %v, want %v", got, tt.want)
 			}
 			if got2 != tt.want2 {
-				t.Errorf("sanitizeBirthday() = %v, want %v", got2, tt.want2)
+				t.Errorf("sanitizeDate() = %v, want %v", got2, tt.want2)
 			}
 			if got3 != tt.want3 {
-				t.Errorf("sanitizeBirthday() = %v, want %v", got3, tt.want3)
+				t.Errorf("sanitizeDate() = %v, want %v", got3, tt.want3)
 			}
 		})
 	}

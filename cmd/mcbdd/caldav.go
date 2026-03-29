@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"slices"
 	"strings"
@@ -23,6 +25,7 @@ const (
 // ihn nur, wenn alle enthaltenen Events die Daemon-PRODID tragen. Enthält der
 // Kalender fremde Events, wird er nicht gelöscht und eine Warnung geloggt.
 func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPClient, user, oldName string) error {
+	slog.DebugContext(ctx, "checking for old calendar to clean up", "user", user, "oldName", oldName)
 	endpoint, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar/")
 	if err != nil {
 		return err
@@ -35,6 +38,7 @@ func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPC
 	if err != nil {
 		return err
 	}
+	slog.DebugContext(ctx, "found calendars", "user", user, "count", len(cc))
 	found := false
 	for _, c := range cc {
 		if strings.HasSuffix(c.Path, fmt.Sprintf("/%s", oldName)) {
@@ -43,8 +47,10 @@ func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPC
 		}
 	}
 	if !found {
+		slog.DebugContext(ctx, "old calendar not found, nothing to clean up", "user", user, "oldName", oldName)
 		return nil
 	}
+	slog.DebugContext(ctx, "old calendar found, checking events", "user", user, "oldName", oldName)
 	calendarPath := fmt.Sprintf("/SOGo/dav/%s/Calendar/%s", user, oldName)
 	events, err := cl.QueryCalendar(ctx, calendarPath, &caldav.CalendarQuery{
 		CompRequest: caldav.CalendarCompRequest{
@@ -76,6 +82,7 @@ func (d *Daemon) cleanupOldCalendar(ctx context.Context, httpClient webdav.HTTPC
 }
 
 func (d *Daemon) ensureBirthdayCal(ctx context.Context, httpClient webdav.HTTPClient, user string) error {
+	slog.DebugContext(ctx, "ensuring birthday calendar exists", "user", user, "calendar", d.calendarName)
 	endpoint, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar/")
 	if err != nil {
 		return err
@@ -90,13 +97,14 @@ func (d *Daemon) ensureBirthdayCal(ctx context.Context, httpClient webdav.HTTPCl
 	}
 	for _, c := range cc {
 		if strings.HasSuffix(c.Path, fmt.Sprintf("/%s", d.calendarName)) {
+			slog.DebugContext(ctx, "birthday calendar already exists", "user", user)
 			return nil
 		}
 	}
 	if err := cl.Mkdir(ctx, d.calendarName); err != nil {
 		return err
 	}
-	slog.InfoContext(ctx, "created birthday calendar", "user", user)
+	slog.InfoContext(ctx, "created birthday calendar", "user", user, "calendar", d.calendarName)
 	return nil
 }
 
@@ -126,7 +134,9 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 	if err != nil {
 		return err
 	}
-	bevs := generateBirthdayEvents(birthdays)
+	slog.DebugContext(ctx, "queried existing calendar events", "user", user, "count", len(events))
+	bevs := generateBirthdayEvents(birthdays, d.eventYears)
+	slog.DebugContext(ctx, "generated birthday events", "user", user, "count", len(bevs))
 	bevsInSync := make([]int, 0)
 	driftedEvents := make([]string, 0)
 	for _, ev := range events {
@@ -145,6 +155,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 	}
 	counterDelete, counterAdded := 0, 0
 	for _, v := range driftedEvents {
+		slog.DebugContext(ctx, "removing drifted calendar event", "user", user, "path", v)
 		if err := cl.RemoveAll(ctx, v); err != nil {
 			return err
 		}
@@ -154,6 +165,7 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 		if slices.Contains(bevsInSync, i) {
 			continue
 		}
+		slog.DebugContext(ctx, "adding calendar event", "user", user, "summary", v.Summary, "start", v.DateTimeStart)
 		p, ic := v.generateICAL(calendarPath, d.notificationEnabled, d.notificationTrigger)
 		_, err := cl.PutCalendarObject(ctx, p, ic)
 		if err != nil {
@@ -163,6 +175,8 @@ func (d *Daemon) syncBirthdaysToCal(ctx context.Context, httpClient webdav.HTTPC
 	}
 	if (counterAdded + counterDelete) > 0 {
 		slog.InfoContext(ctx, "synchronized birthday events", "user", user, "added", counterAdded, "removed", counterDelete)
+	} else {
+		slog.DebugContext(ctx, "birthday events already in sync", "user", user, "total", len(bevs))
 	}
 	return nil
 }
@@ -173,14 +187,18 @@ type birthdayEvent struct {
 	DateTimeEnd   string
 }
 
-func generateBirthdayEvents(birthdays []BirthdayContact) []birthdayEvent {
+func generateBirthdayEvents(birthdays []BirthdayContact, eventYears int) []birthdayEvent {
 	cyear := time.Now().Year()
 	bb := make([]birthdayEvent, 0)
 	for _, v := range birthdays {
-		for year := cyear; year <= 10+cyear; year++ {
+		for year := cyear; year <= eventYears+cyear; year++ {
 			yearshift := year - v.Date.Year()
+			prefix := "\U0001F382 " // 🎂
+			if v.Type == ContactTypeAnniversary {
+				prefix = "\U0001F48D " // 💍
+			}
 			ev := birthdayEvent{
-				Summary:       fmt.Sprintf("%s %s", v.GivenName, v.FamilyName),
+				Summary:       fmt.Sprintf("%s%s %s", prefix, v.GivenName, v.FamilyName),
 				DateTimeStart: v.Date.AddDate(yearshift, 0, 0).Format("20060102"),
 				DateTimeEnd:   v.Date.AddDate(yearshift, 0, 1).Format("20060102"),
 			}
@@ -253,4 +271,157 @@ func (bev birthdayEvent) generateICAL(calendar string, notificationEnabled bool,
 	}
 	cal.Children = append(cal.Children, event)
 	return fmt.Sprintf("%s/%s.ics", calendar, id), cal
+}
+
+// XML-Strukturen für das Parsen der PROPFIND-Antwort (calendar-color).
+type multistatusResponse struct {
+	XMLName   xml.Name      `xml:"DAV: multistatus"`
+	Responses []davResponse `xml:"DAV: response"`
+}
+
+type davResponse struct {
+	Href      string        `xml:"DAV: href"`
+	PropStats []davPropStat `xml:"DAV: propstat"`
+}
+
+type davPropStat struct {
+	Prop   davProp `xml:"DAV: prop"`
+	Status string  `xml:"DAV: status"`
+}
+
+type davProp struct {
+	CalendarColor string `xml:"http://apple.com/ns/ical/ calendar-color"`
+}
+
+// normalizeColor bringt eine Kalenderfarbe in ein einheitliches Format (#rrggbb,
+// Kleinbuchstaben, ohne Alpha-Kanal), damit zuverlässig verglichen werden kann.
+func normalizeColor(c string) string {
+	c = strings.TrimSpace(strings.ToLower(c))
+	if len(c) == 9 && strings.HasPrefix(c, "#") {
+		c = c[:7]
+	}
+	return c
+}
+
+// getCalendarColor liest die calendar-color-Property (Apple-Namespace) des
+// Geburtstagskalenders per PROPFIND aus und gibt sie normalisiert zurück.
+func (d *Daemon) getCalendarColor(ctx context.Context, httpClient webdav.HTTPClient, user string) (string, error) {
+	calendarURL, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar", d.calendarName)
+	if err != nil {
+		return "", err
+	}
+	body := `<?xml version="1.0" encoding="UTF-8"?>
+<d:propfind xmlns:d="DAV:" xmlns:A="http://apple.com/ns/ical/">
+  <d:prop>
+    <A:calendar-color/>
+  </d:prop>
+</d:propfind>`
+	req, err := http.NewRequestWithContext(ctx, "PROPFIND", calendarURL, strings.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+	req.Header.Set("Depth", "0")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMultiStatus {
+		return "", fmt.Errorf("PROPFIND calendar-color returned status %d", resp.StatusCode)
+	}
+
+	var ms multistatusResponse
+	if err := xml.NewDecoder(resp.Body).Decode(&ms); err != nil {
+		return "", fmt.Errorf("error parsing PROPFIND response: %w", err)
+	}
+
+	for _, r := range ms.Responses {
+		for _, ps := range r.PropStats {
+			if ps.Prop.CalendarColor != "" {
+				return normalizeColor(ps.Prop.CalendarColor), nil
+			}
+		}
+	}
+	return "", nil
+}
+
+// setCalendarColor setzt die calendar-color-Property (Apple-Namespace) des
+// Geburtstagskalenders per PROPPATCH. Die Farbe wird mit Alpha-Kanal (#RRGGBBFF)
+// übertragen, da SOGo dieses Format erwartet.
+func (d *Daemon) setCalendarColor(ctx context.Context, httpClient webdav.HTTPClient, user, color string) error {
+	calendarURL, err := url.JoinPath(d.baseURL, "SOGo/dav", user, "Calendar", d.calendarName)
+	if err != nil {
+		return err
+	}
+	colorValue := strings.ToUpper(color)
+	if len(colorValue) == 7 {
+		colorValue += "FF"
+	}
+	body := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<d:propertyupdate xmlns:d="DAV:" xmlns:A="http://apple.com/ns/ical/">
+  <d:set>
+    <d:prop>
+      <A:calendar-color>%s</A:calendar-color>
+    </d:prop>
+  </d:set>
+</d:propertyupdate>`, colorValue)
+
+	req, err := http.NewRequestWithContext(ctx, "PROPPATCH", calendarURL, strings.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMultiStatus && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("PROPPATCH calendar-color returned status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// ensureCalendarColor stellt sicher, dass der Geburtstagskalender die
+// konfigurierte Farbe hat, sofern der Benutzer sie nicht manuell geändert hat.
+// Die Erkennung manueller Änderungen basiert auf dem Vergleich zwischen der
+// aktuellen Kalenderfarbe und der zuletzt vom Daemon gesetzten Farbe (aus dem
+// State-File). Stimmen diese nicht überein, wurde die Farbe vom Benutzer
+// angepasst und wird nicht überschrieben.
+func (d *Daemon) ensureCalendarColor(ctx context.Context, httpClient webdav.HTTPClient, user string) error {
+	if d.calendarColor == "" {
+		return nil
+	}
+
+	current, err := d.getCalendarColor(ctx, httpClient, user)
+	if err != nil {
+		return fmt.Errorf("error reading calendar color: %w", err)
+	}
+
+	desired := normalizeColor(d.calendarColor)
+	stored := normalizeColor(d.storedCalendarColor)
+
+	if current == desired {
+		slog.DebugContext(ctx, "calendar color already correct", "user", user, "color", desired)
+		return nil
+	}
+
+	// Wenn der Benutzer die Farbe manuell geändert hat (current != stored && current != ""),
+	// wird die Farbe nicht überschrieben.
+	if current != "" && stored != "" && current != stored {
+		slog.DebugContext(ctx, "calendar color was customized by user, skipping",
+			"user", user, "current", current, "daemon", stored)
+		return nil
+	}
+
+	if err := d.setCalendarColor(ctx, httpClient, user, desired); err != nil {
+		return fmt.Errorf("error setting calendar color: %w", err)
+	}
+	slog.InfoContext(ctx, "set calendar color", "user", user, "color", desired)
+	return nil
 }

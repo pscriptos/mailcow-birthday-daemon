@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -57,7 +58,11 @@ func (h *healthState) update(err error) {
 		s.LastError = err.Error()
 	}
 	data, _ := json.Marshal(s)
-	os.WriteFile(h.filePath, data, 0644)
+	if writeErr := os.WriteFile(h.filePath, data, 0644); writeErr != nil {
+		slog.Error("failed to write health file", "path", h.filePath, "err", writeErr)
+	} else {
+		slog.Debug("health status updated", "path", h.filePath, "lastError", s.LastError != "")
+	}
 }
 
 // runHealthcheck liest die Health-Datei und prüft, ob der Daemon healthy ist.
@@ -68,6 +73,7 @@ func runHealthcheck() error {
 		stateFilepath = "state.json"
 	}
 	healthPath := filepath.Join(filepath.Dir(stateFilepath), healthFile)
+	slog.Debug("running healthcheck", "healthPath", healthPath)
 
 	data, err := os.ReadFile(healthPath)
 	if err != nil {
@@ -78,10 +84,13 @@ func runHealthcheck() error {
 		return fmt.Errorf("invalid health file: %w", err)
 	}
 	if s.LastError != "" {
+		slog.Warn("healthcheck: last sync had an error", "lastError", s.LastError)
 		return fmt.Errorf("last sync failed: %s", s.LastError)
 	}
 	if time.Since(s.LastSync) > maxSyncAge() {
+		slog.Warn("healthcheck: last sync too old", "age", time.Since(s.LastSync).Round(time.Second))
 		return fmt.Errorf("last sync too old: %s ago", time.Since(s.LastSync).Round(time.Second))
 	}
+	slog.Debug("healthcheck passed", "lastSync", s.LastSync.Format("2006/01/02 15:04:05"))
 	return nil
 }
