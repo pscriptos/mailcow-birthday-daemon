@@ -28,6 +28,7 @@ services:
             # - NOTIFICATION_ENABLED=true
             # - NOTIFICATION_TIME=08:00
             # - SYNC_INTERVAL=15m
+            # - MAILBOX_EXCLUDE=user1@example.com,user2@example.com
             # - LOG_LEVEL=info
         volumes:
             - birthdaydaemon:/data
@@ -64,7 +65,9 @@ docker compose pull birthdaydaemon && docker compose up -d --no-deps birthdaydae
 | `NOTIFICATION_ENABLED` | Nein | `false` | Aktiviert Kalender-Benachrichtigungen (VALARM) für Geburtstags-Events (`true`/`false`) |
 | `NOTIFICATION_TIME` | Nein | `08:00` | Uhrzeit der Benachrichtigung im Format `HH:MM` (nur wirksam wenn `NOTIFICATION_ENABLED=true`) |
 | `STATEFILE` | Nein | `state.json` (im Container: `/data/state.json`) | Pfad zur Zustandsdatei, in der App-Passwörter und der aktuelle Kalendername gespeichert werden |
-| `SYNC_INTERVAL` | Nein | `15m` | Intervall zwischen den Synchronisationsläufen im Go-Duration-Format (z. B. `10m`, `30m`, `1h`). Mindestwert: `1m`. || `LOG_LEVEL` | Nein | `info` | Log-Verbosity: `debug`, `info`, `warn` oder `error`. Im `debug`-Modus werden einzelne Kalendereinträge (hinzugefügt/entfernt) und Kontaktdetails geloggt. |
+| `SYNC_INTERVAL` | Nein | `15m` | Intervall zwischen den Synchronisationsläufen im Go-Duration-Format (z. B. `10m`, `30m`, `1h`). Mindestwert: `1m`. |
+| `MAILBOX_EXCLUDE` | Nein | – | Kommagetrennte Liste von Mailadressen, die von der Synchronisation ausgeschlossen werden (z. B. `admin@example.com,noreply@example.com`). Standardmäßig erhalten alle aktiven Mailboxen einen Geburtstagskalender. |
+| `LOG_LEVEL` | Nein | `info` | Log-Verbosity: `debug`, `info`, `warn` oder `error`. Im `debug`-Modus werden einzelne Kalendereinträge (hinzugefügt/entfernt) und Kontaktdetails geloggt. |
 ## API-Key erstellen
 
 Den API-Key findet man im Admin-Panel unter Konfiguration → Zugang → Administratordetails bearbeiten → API → Lese-/Schreibzugriff.

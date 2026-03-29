@@ -18,6 +18,12 @@ Der Mailcow Birthday Daemon synchronisiert automatisch Geburtstagskalender für 
     - Aktuell fest eingestellt: 1 Jahr in der Vergangenheit, 10 Jahre in der Zukunft.
     - Selbstverständlich pro Mailbox isoliert – ein Benutzer sieht nur die Geburtstage seiner eigenen Kontakte.
 
+## Mailbox-Filter
+
+Standardmäßig erhalten alle aktiven Mailboxen einen Geburtstagskalender. Über die Umgebungsvariable `MAILBOX_EXCLUDE` können einzelne Mailboxen von der Synchronisation ausgeschlossen werden (z. B. Service-Accounts oder Shared Mailboxen). Ausgeschlossene Mailboxen werden beim Sync-Zyklus übersprungen. Bereits vorhandene Kalender in diesen Mailboxen werden dabei nicht automatisch entfernt – dafür kann der `cleanup`-Befehl verwendet werden (siehe [Troubleshooting](troubleshooting.md#doppelte-kalender-nach-umbenennung-von-calendar_name)).
+
+Die Variable kann jederzeit – auch bei bestehenden Installationen – per Update hinzugefügt oder geändert werden.
+
 ## Kalendersynchronisation
 
 - Die berechneten Ereignisse werden in einen Kalender synchronisiert, dessen Name über `CALENDAR_NAME` konfigurierbar ist (Standard: „Birthdays"). Der Anzeigename kann vom Benutzer in SOGo zusätzlich umbenannt werden.

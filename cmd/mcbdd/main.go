@@ -40,6 +40,7 @@ type Daemon struct {
 	notificationEnabled bool
 	notificationTrigger string
 	syncInterval        time.Duration
+	excludeMailboxes    map[string]bool
 	health              *healthState
 }
 
@@ -130,7 +131,16 @@ func run() error {
 		"NOTIFICATION_ENABLED", notificationEnabled,
 		"MAILCOW_RESOLVE_HOST", os.Getenv("MAILCOW_RESOLVE_HOST"),
 		"STATEFILE", os.Getenv("STATEFILE"),
+		"MAILBOX_EXCLUDE", os.Getenv("MAILBOX_EXCLUDE"),
 	)
+
+	excludeMailboxes := parseMailboxExclude()
+	if len(excludeMailboxes) > 0 {
+		slog.Info("mailbox exclusion configured", "count", len(excludeMailboxes))
+		for addr := range excludeMailboxes {
+			slog.Debug("excluding mailbox", "address", addr)
+		}
+	}
 
 	notificationTrigger := "PT8H"
 	if notificationEnabled {
@@ -157,6 +167,7 @@ func run() error {
 		notificationEnabled: notificationEnabled,
 		notificationTrigger: notificationTrigger,
 		syncInterval:        syncInterval,
+		excludeMailboxes:    excludeMailboxes,
 	}
 	if len(d.stateFilepath) == 0 {
 		d.stateFilepath = "state.json"
@@ -242,9 +253,22 @@ func (d *Daemon) daemonRun() error {
 	return nil
 }
 
+// isMailboxExcluded prüft, ob eine Mailbox über MAILBOX_EXCLUDE
+// von der Synchronisation ausgeschlossen ist.
+func (d *Daemon) isMailboxExcluded(username string) bool {
+	if len(d.excludeMailboxes) == 0 {
+		return false
+	}
+	return d.excludeMailboxes[strings.ToLower(username)]
+}
+
 func (d *Daemon) processUser(ctx context.Context, m mailcow.Mailbox) error {
 	if !m.IsActive() {
 		slog.DebugContext(ctx, "skipping inactive mailbox", "user", m.Username)
+		return nil
+	}
+	if d.isMailboxExcluded(m.Username) {
+		slog.DebugContext(ctx, "skipping excluded mailbox", "user", m.Username)
 		return nil
 	}
 	slog.DebugContext(ctx, "processing user", "user", m.Username)
@@ -356,6 +380,27 @@ func runCleanup() error {
 
 	slog.Info("cleanup finished", "processed", processed, "skipped", skipped)
 	return nil
+}
+
+// parseMailboxExclude liest MAILBOX_EXCLUDE aus der Umgebung und gibt eine
+// Map mit den ausgeschlossenen Mailadressen (lowercase) zurück.
+// Mehrere Adressen werden durch Komma getrennt.
+func parseMailboxExclude() map[string]bool {
+	raw := os.Getenv("MAILBOX_EXCLUDE")
+	if raw == "" {
+		return nil
+	}
+	exclude := make(map[string]bool)
+	for _, addr := range strings.Split(raw, ",") {
+		addr = strings.TrimSpace(addr)
+		if addr != "" {
+			exclude[strings.ToLower(addr)] = true
+		}
+	}
+	if len(exclude) == 0 {
+		return nil
+	}
+	return exclude
 }
 
 // parseSyncInterval liest SYNC_INTERVAL aus der Umgebung und gibt die
