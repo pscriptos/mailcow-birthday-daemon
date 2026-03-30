@@ -1,6 +1,7 @@
 /.vscode/
 /.ki-workspace/
 /dist/
+*.exe
 
 .env
 state.json
