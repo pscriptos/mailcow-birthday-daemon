@@ -1,29 +1,56 @@
-# Mailcow Birthday Daemon 🎂
+<p align="center">
+  <a href="https://techniverse.net">
+    <img src="https://assets.techniverse.net/f1/git/graphics/repo-techniverse-logo.png" alt="Techniverse Community" height="70" />
+  </a>
+</p>
 
-> **Fork-Hinweis:** Dieses Projekt ist ein Fork von [Marco98/mailcow-birthday-daemon](https://github.com/Marco98/mailcow-birthday-daemon) und wird hier eigenständig weiterentwickelt.
+<h1 align="center"> Mailcow Birthday Daemon 🎂</h1>
 
-> **Hinweis zur Entwicklung:** Dieses Projekt wird mit Unterstützung von KI-gestützten Entwicklungswerkzeugen gepflegt. Go ist nicht meine primäre Sprache – umso wichtiger sind sauberer Code, Tests und transparente Entwicklung.
+<h4 align="center">
+  Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailcow-Mailbox erzeugt und synchronisiert.
+</h4>
 
-Ein einfacher Daemon, der automatisch einen Geburtstagskalender für jede Mailcow-Mailbox erzeugt und synchronisiert. Es ist kein Benutzereingriff erforderlich – alles läuft vollautomatisch.
+<h6 align="center">
+  <a href="https://www.cleveradmin.de">🏰 Website</a>
+  ·
+  <a href="https://techniverse.net">📰 Community</a>
+  ·
+  <a href="https://social.techniverse.net/@donnerwolke">🐘 Mastodon</a>
+  ·
+  <a href="https://matrix.to/#/#support:techniverse.net">💬 Support</a>
+</h6>
+<br><br>
 
 ![Kalenderansicht](assets/img/kalenderansicht.png)
 
-## Kurzübersicht
+## ✨ Highlights
 
-- Liest Geburtstage und Jahrestage aus allen CardDAV-Adressbüchern jeder Mailbox
-- Erstellt und synchronisiert automatisch einen Geburtstagskalender pro Benutzer
-- Konfigurierbarer Kalendername (`CALENDAR_NAME`) und Kalenderfarbe (`CALENDAR_COLOR`)
-- Optionale Benachrichtigungen (VALARM) zur konfigurierbarer Uhrzeit
-- Konfigurierbares Sync-Intervall (`SYNC_INTERVAL`) und Event-Horizont (`EVENT_YEARS`)
-- Mailboxen einzeln ausschließbar via `MAILBOX_EXCLUDE`
-- Automatische App-Passwort-Verwaltung (persistent im State-File)
-- Integrierter Cleanup-Befehl bei doppelten Kalendern nach Umbenennung
-- Startup-Connectivity-Check, Graceful Shutdown und Docker-Healthcheck
-- Hairpin-NAT-Lösung via `MAILCOW_RESOLVE_HOST` für Docker-Netze
-- Strukturiertes Logging mit konfigurierbarem Log-Level
-- Läuft als Docker-Container direkt im Mailcow-Stack
+🌟 **Automatische Geburtstagskalender:**
+  - Liest Geburtstage & Jahrestage aus allen CardDAV-Adressbüchern jeder Mailbox
+  - Erstellt & synchronisiert für jeden Benutzer einen eigenen Geburtstagskalender
 
-## Schnellstart
+🎨 **Individuelle Anpassung:**
+  - Kalendername & Kalenderfarbe frei wählbar
+  - Sync-Intervall & Event-Horizont flexibel einstellbar
+
+⏰ **Benachrichtigungen:**
+  - Optionale Erinnerungen (VALARM) zur gewünschten Uhrzeit
+
+🚫 **Mailbox-Management:**
+  - Einzelne Mailboxen gezielt ausschließen
+  - Automatische Verwaltung von App-Passwörtern (persistenter State)
+
+🧹 **Cleanup & Wartung:**
+  - Integrierter Cleanup-Befehl für doppelte Kalender nach Umbenennung
+  - Startup-Connectivity-Check, Graceful Shutdown & Docker-Healthcheck
+
+🌐 **Docker-Optimierung:**
+  - Hairpin-NAT-Lösung für Docker-Netzwerke
+  - Strukturiertes Logging mit konfigurierbarem Log-Level
+  - Läuft als Docker-Container direkt im Mailcow-Stack
+
+
+## 🚀 Schnellstart
 
 Den folgenden Abschnitt in eine `docker-compose.override.yml` im Mailcow-Verzeichnis (z. B. `/opt/mailcow-dockerized`) einfügen:
 
@@ -59,7 +86,7 @@ docker compose up -d
 
 > Alle verfügbaren Image-Tags sind in der [Container Registry](https://git.techniverse.net/scriptos/-/packages/container/mailcow-birthday-daemon) einsehbar.
 
-## Repository-Spiegel
+## 🔗 Repository-Spiegel
 
 | Rolle | URL |
 |-------|-----|
@@ -68,14 +95,17 @@ docker compose up -d
 
 > **Hinweis:** Die Entwicklung findet im Master-Repository statt. Der GitHub-Spiegel wird automatisch synchronisiert. Issues und Feature-Requests können sowohl auf [Gitea](https://git.techniverse.net/scriptos/mailcow-birthday-daemon/issues) als auch auf [GitHub](https://github.com/pscriptos/mailcow-birthday-daemon/issues) eingereicht werden.
 
-## Dokumentation
+## 📚 Dokumentation
 
 Die vollständige Dokumentation befindet sich im Ordner [`docs/`](docs/README.md).
 
+<br><br>
 <p align="center">
   <img src="https://assets.techniverse.net/f1/git/graphics/gray0-catonline.svg" alt="">
 </p>
 
 <p align="center">
-<img src="https://assets.techniverse.net/f1/logos/small/license.png" alt="License" width="15" height="15"> <a href="./LICENSE">License</a> | <img src="https://assets.techniverse.net/f1/logos/small/matrix2.svg" alt="Matrix" width="15" height="15"> <a href="https://matrix.to/#/#community:techniverse.net">Matrix</a> | <img src="https://assets.techniverse.net/f1/logos/small/mastodon2.svg" alt="Mastodon" width="15" height="15"> <a href="https://social.techniverse.net/@donnerwolke">Mastodon</a>
+  <sub>
+     © Patrick Asmus · Techniverse Network · <a href="./LICENSE">Lizenz</a>
+  </sub>
 </p>
